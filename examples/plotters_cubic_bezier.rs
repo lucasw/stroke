@@ -52,7 +52,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         bezier_graph_reg.push((p.axis(0), p.axis(1)));
     }
 
-    let root = BitMapBackend::new("cubic_bezier_bounding_box.png", (1024, 1024)).into_drawing_area();
+    let root =
+        BitMapBackend::new("cubic_bezier_bounding_box.png", (1024, 1024)).into_drawing_area();
     root.fill(&WHITE)?;
 
     // setup the chart
@@ -97,7 +98,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .draw_series(LineSeries::new(bezier_graph_reg, &RED))?
         .label("B(t)")
         .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
-
 
     // draw the bounding box
     chart

@@ -259,8 +259,8 @@ where
 
         // Copy the control points needed for the first iteration
         // For a B-Spline of degree D, D+1 control points in the knot span contribute to the result
-        for j in 0..D {
-            d[j] = self.control_points[j + k - D];
+        for (j, d_j) in d.iter_mut().enumerate().take(D) {
+            *d_j = self.control_points[j + k - D];
         }
 
         // // Adjust the start index to prevent negative values

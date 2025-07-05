@@ -15,20 +15,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (3.2f64, -4f64),
     ];
 
-    // the path for drawing the convex hull needs to be closed
-    let chull = vec![
-        (0f64, 1.77f64),
-        (1.1f64, -1f64),
-        (3.2f64, -4f64),
-        (4.3f64, 3f64),
-        (0f64, 1.77f64),
-    ];
-
     let bezier = CubicBezier::new(
-        PointN::new([0f64, 1.77f64]),
-        PointN::new([1.1f64, -1f64]),
-        PointN::new([4.3f64, 3f64]),
-        PointN::new([3.2f64, -4f64]),
+        PointN::new([cpoints[0].0, cpoints[0].1]),
+        PointN::new([cpoints[1].0, cpoints[1].1]),
+        PointN::new([cpoints[2].0, cpoints[2].1]),
+        PointN::new([cpoints[3].0, cpoints[3].1]),
     );
 
     let bounds = bezier.bounding_box();
@@ -99,6 +90,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .label("B(t)")
         .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
 
+    chart
+        .draw_series(LineSeries::new([cpoints[0], cpoints[1]], &BLUE))?
+        .label("handle 0")
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], BLUE));
+
+    chart
+        .draw_series(LineSeries::new([cpoints[3], cpoints[2]], &BLUE))?
+        .label("handle 1")
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], BLUE));
+
     // draw the bounding box
     chart
         .draw_series(
@@ -117,12 +118,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?
         .label("Bounding Box")
         .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], GREEN));
-
-    // draw the convex hull of control points
-    chart
-        .draw_series(AreaSeries::new(chull, 0.0, BLUE.mix(0.0)).border_style(BLUE))?
-        .label("CH(control_points)")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], BLUE));
 
     chart
         .configure_series_labels()

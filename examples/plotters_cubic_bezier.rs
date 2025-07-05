@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cpoints = vec![
         (0f64, 1.77f64),
         (1.1f64, -1f64),
-        (4.3f64, 3f64),
+        (5.3f64, 1.4f64),
         (3.2f64, -4f64),
     ];
 
@@ -42,16 +42,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let p = bezier.eval(t);
         bezier_graph_reg.push((p.axis(0), p.axis(1)));
     }
-
-    let test_t = 0.6;
-    let test_point = bezier.eval(test_t);
-    // TODO(lucasw) make this a bezier function
-    let derivative_test_point = bezier.derivative().eval(test_t);
-    let d_len = derivative_test_point.squared_length().sqrt();
-    let (tangent_x, tangent_y) = (
-        derivative_test_point.axis(0) / d_len,
-        derivative_test_point.axis(1) / d_len,
-    );
 
     let root =
         BitMapBackend::new("cubic_bezier_bounding_box.png", (1024, 1024)).into_drawing_area();
@@ -104,8 +94,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .label("B(t)")
         .legend(|(x, y)| PathElement::new(legend_pt(x, y), RED));
 
-    chart
-        .draw_series(PointSeries::of_element(
+    {
+        let test_t = 0.6;
+        let test_point = bezier.eval(test_t);
+
+        // TODO(lucasw) make this a bezier function
+        let derivative_test_point = bezier.derivative().eval(test_t);
+        let d_len = derivative_test_point.squared_length().sqrt();
+        let (tangent_x, tangent_y) = (
+            derivative_test_point.axis(0) / d_len,
+            derivative_test_point.axis(1) / d_len,
+        );
+
+        let curvature = bezier.curvature(test_t);
+
+        let (rel_center_x, rel_center_y) = {
+            let normal_x = -tangent_y;
+            let normal_y = tangent_x;
+            if curvature.abs() > 0.1 {
+                let radius = 1.0 / curvature;
+                (normal_x * radius, normal_y * radius)
+            } else {
+                (normal_x * 10.0, normal_y * 10.0)
+            }
+        };
+
+        chart.draw_series(PointSeries::of_element(
             [(test_point.axis(0), test_point.axis(1))],
             5,
             &BLUE,
@@ -113,17 +127,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 EmptyElement::at(coord)
                     + Circle::new((0, 0), size, style)
                     + Text::new(
-                        format!("test point {:?}", coord),
+                        format!(
+                            "test point t = {test_t:.2}, curvature {curvature:.2}, radius {:.2}",
+                            1.0 / curvature
+                        ),
                         (0, 15),
                         ("sans-serif", 15).into_font(),
                     )
             },
-        ))?
-        .label("test point")
-        .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
+        ))?;
+        // .label("test point");
+        // .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
 
-    chart
-        .draw_series(LineSeries::new(
+        chart.draw_series(LineSeries::new(
             [
                 (test_point.axis(0), test_point.axis(1)),
                 (
@@ -132,9 +148,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
             ],
             &BLUE,
-        ))?
-        .label("test point derivative")
-        .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
+        ))?;
+        // .label("test point derivative")
+        // .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
+
+        chart.draw_series(LineSeries::new(
+            [
+                (test_point.axis(0), test_point.axis(1)),
+                (
+                    test_point.axis(0) + rel_center_x,
+                    test_point.axis(1) + rel_center_y,
+                ),
+            ],
+            &BLUE,
+        ))?;
+    }
 
     chart
         .draw_series(LineSeries::new([cpoints[0], cpoints[1]], &BLUE))?

@@ -54,8 +54,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .x_label_area_size(30)
         .y_label_area_size(30)
         .build_cartesian_2d(
-            (xmin - 2.0)..(xmin + dmax + 2.0),
-            (ymin - 2.0)..(ymin + dmax + 2.0),
+            (xmin - 1.0)..(xmin + dmax + 1.0),
+            (ymin - 1.0)..(ymin + dmax + 1.0),
         )?; // make graph a bit bigger than bounding box
 
     chart.configure_mesh().draw()?;
@@ -63,6 +63,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     fn legend_pt(x: i32, y: i32) -> Vec<(i32, i32)> {
         vec![(x, y), (x + 20, y)]
     }
+
+    // draw the bounding box
+    chart
+        .draw_series(
+            AreaSeries::new(
+                vec![
+                    (xmin, ymin),
+                    (xmin, ymax),
+                    (xmax, ymax),
+                    (xmax, ymin),
+                    (xmin, ymin),
+                ],
+                0.0,
+                GREEN.mix(0.03),
+            )
+            .border_style(GREEN),
+        )?
+        .label("Bounding Box")
+        .legend(|(x, y)| PathElement::new(legend_pt(x, y), GREEN));
 
     // draw the control points of B(t)
     chart
@@ -173,25 +192,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .draw_series(LineSeries::new([cpoints[3], cpoints[2]], &BLUE))?
         .label("handle 1")
         .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
-
-    // draw the bounding box
-    chart
-        .draw_series(
-            AreaSeries::new(
-                vec![
-                    (xmin, ymin),
-                    (xmin, ymax),
-                    (xmax, ymax),
-                    (xmax, ymin),
-                    (xmin, ymin),
-                ],
-                0.0,
-                GREEN.mix(0.05),
-            )
-            .border_style(GREEN),
-        )?
-        .label("Bounding Box")
-        .legend(|(x, y)| PathElement::new(legend_pt(x, y), GREEN));
 
     chart
         .configure_series_labels()

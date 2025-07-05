@@ -43,6 +43,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         bezier_graph_reg.push((p.axis(0), p.axis(1)));
     }
 
+    let test_t = 0.6;
+    let test_point = bezier.eval(test_t);
+    // TODO(lucasw) make this a bezier function
+    let derivative_test_point = bezier.derivative().eval(test_t);
+    let d_len = derivative_test_point.squared_length().sqrt();
+    let (tangent_x, tangent_y) = (
+        derivative_test_point.axis(0) / d_len,
+        derivative_test_point.axis(1) / d_len,
+    );
+
     let root =
         BitMapBackend::new("cubic_bezier_bounding_box.png", (1024, 1024)).into_drawing_area();
     root.fill(&WHITE)?;
@@ -59,6 +69,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?; // make graph a bit bigger than bounding box
 
     chart.configure_mesh().draw()?;
+
+    fn legend_pt(x: i32, y: i32) -> Vec<(i32, i32)> {
+        vec![(x, y), (x + 20, y)]
+    }
 
     // draw the control points of B(t)
     chart
@@ -77,28 +91,60 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         ))?
         .label("Control Points of B(t)")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], BLUE));
+        .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
 
     // draw the actual bezier curve
     chart
         .draw_series(LineSeries::new(bezier_graph, &RED))?
-        .label("B(t) castlejau")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
+        .label(format!("B(t) castlejau, length: {:.2}", bezier.arclen(32)))
+        .legend(|(x, y)| PathElement::new(legend_pt(x, y), RED));
 
     chart
         .draw_series(LineSeries::new(bezier_graph_reg, &RED))?
         .label("B(t)")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], RED));
+        .legend(|(x, y)| PathElement::new(legend_pt(x, y), RED));
+
+    chart
+        .draw_series(PointSeries::of_element(
+            [(test_point.axis(0), test_point.axis(1))],
+            5,
+            &BLUE,
+            &|coord, size, style| {
+                EmptyElement::at(coord)
+                    + Circle::new((0, 0), size, style)
+                    + Text::new(
+                        format!("test point {:?}", coord),
+                        (0, 15),
+                        ("sans-serif", 15).into_font(),
+                    )
+            },
+        ))?
+        .label("test point")
+        .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
+
+    chart
+        .draw_series(LineSeries::new(
+            [
+                (test_point.axis(0), test_point.axis(1)),
+                (
+                    test_point.axis(0) + tangent_x,
+                    test_point.axis(1) + tangent_y,
+                ),
+            ],
+            &BLUE,
+        ))?
+        .label("test point derivative")
+        .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
 
     chart
         .draw_series(LineSeries::new([cpoints[0], cpoints[1]], &BLUE))?
         .label("handle 0")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], BLUE));
+        .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
 
     chart
         .draw_series(LineSeries::new([cpoints[3], cpoints[2]], &BLUE))?
         .label("handle 1")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], BLUE));
+        .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
 
     // draw the bounding box
     chart
@@ -117,7 +163,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .border_style(GREEN),
         )?
         .label("Bounding Box")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], GREEN));
+        .legend(|(x, y)| PathElement::new(legend_pt(x, y), GREEN));
 
     chart
         .configure_series_labels()

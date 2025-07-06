@@ -5,8 +5,10 @@ use super::*;
 
 /// A 2D  cubic Bezier curve defined by four points: the starting point, two successive control points and the ending point.
 ///
-/// The curve is defined by equation:
-/// ```∀ t ∈ [0..1],  P(t) = (1 - t)³ * start + 3 * (1 - t)² * t * ctrl1 + 3 * t² * (1 - t) * ctrl2 + t³ * end```
+/// The curve is defined by equation
+/// : ```∀ t ∈ [0..1],  P(t) = (1 - t)³ * start + 3 * (1 - t)² * t * ctrl1 + 3 * t² * (1 - t) * ctrl2 + t³ * end```
+// TODO(lucasw) the vim syntax highlighting doesn't like the triple slashes followed by triple
+// back-tick above, but putting the ':' on the same line avoids it
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct CubicBezier<P> {
     pub(crate) start: P,
@@ -185,14 +187,33 @@ where
     //     return 1.0.into() / self.curvature(t)
     // }
 
-    /// Calculates the minimum distance between given 'point' and the curve.
+    fn capture_closest(
+        closest_point_on_curve: &mut P,
+        tmin: &mut P::Scalar,
+        dmin: &mut P::Scalar,
+        candidate: &P,
+        t: P::Scalar,
+        point: &P,
+    ) {
+        let distance = (*candidate - *point).squared_length();
+        if distance < *dmin {
+            *tmin = t;
+            *closest_point_on_curve = *candidate;
+            *dmin = distance;
+        }
+    }
+
+    /// Calculates the minimum distance between given 'point' and the curve, returns the closest point on
+    /// the curve, the t-value, and the distance.
     /// Uses two passes with the same amount of steps in t:
     /// 1. coarse search over the whole curve
     /// 2. fine search around the minimum yielded by the coarse search
-    pub fn distance_to_point(&self, point: P) -> P::Scalar {
+    pub fn closest_to_point(&self, point: P) -> (P, P::Scalar, P::Scalar) {
         let nsteps: usize = 64;
         let mut tmin: P::Scalar = 0.5.into();
         let mut dmin: P::Scalar = (point - self.start).squared_length();
+        let mut closest_point_on_curve = self.start;
+
         // 1. coarse pass
         for i in 0..nsteps {
             // calculate next step value
@@ -200,10 +221,14 @@ where
                 (i as NativeFloat * 1.0 as NativeFloat / (nsteps as NativeFloat)).into();
             // calculate distance to candidate
             let candidate = self.eval(t);
-            if (candidate - point).squared_length() < dmin {
-                tmin = t;
-                dmin = (candidate - point).squared_length();
-            }
+            Self::capture_closest(
+                &mut closest_point_on_curve,
+                &mut tmin,
+                &mut dmin,
+                &candidate,
+                t,
+                &point,
+            );
         }
         // 2. fine pass
         for i in 0..nsteps {
@@ -212,12 +237,21 @@ where
                 (i as NativeFloat * 1.0 as NativeFloat / ((nsteps * nsteps) as NativeFloat)).into();
             // calculate distance to candidate centered around tmin from before
             let candidate: P = self.eval(tmin + t - t * (nsteps as NativeFloat / 2.0));
-            if (candidate - point).squared_length() < dmin {
-                tmin = t;
-                dmin = (candidate - point).squared_length();
-            }
+            Self::capture_closest(
+                &mut closest_point_on_curve,
+                &mut tmin,
+                &mut dmin,
+                &candidate,
+                t,
+                &point,
+            );
         }
-        dmin.sqrt()
+        (closest_point_on_curve, tmin, dmin.sqrt())
+    }
+
+    pub fn distance_to_point(&self, point: P) -> P::Scalar {
+        let (_, _, distance) = self.closest_to_point(point);
+        distance
     }
 
     pub fn baseline(&self) -> LineSegment<P> {

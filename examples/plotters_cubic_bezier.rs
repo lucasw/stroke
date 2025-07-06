@@ -114,8 +114,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .legend(|(x, y)| PathElement::new(legend_pt(x, y), RED));
 
     {
-        let test_t = 0.6;
-        let test_point = bezier.eval(test_t);
+        let point_off_line = PointN::new([4.1, 0.5]);
+        let (test_point, test_t, distance) = bezier.closest_to_point(point_off_line);
+        // let test_t = 0.6;
+        // let test_point = bezier.eval(test_t);
 
         // TODO(lucasw) make this a bezier function
         let derivative_test_point = bezier.derivative().eval(test_t);
@@ -137,6 +139,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 (normal_x * 10.0, normal_y * 10.0)
             }
         };
+
+        chart.draw_series(PointSeries::of_element(
+            [(point_off_line.axis(0), point_off_line.axis(1))],
+            5,
+            &RED,
+            &|coord, size, style| {
+                EmptyElement::at(coord)
+                    + Circle::new((0, 0), size, style)
+                    + Text::new(
+                        format!("point off line {point_off_line:?}, distance {distance:.1}",),
+                        (0, 15),
+                        ("sans-serif", 15).into_font(),
+                    )
+            },
+        ))?;
+
+        chart.draw_series(LineSeries::new(
+            [
+                (test_point.axis(0), test_point.axis(1)),
+                (point_off_line.axis(0), point_off_line.axis(1)),
+            ],
+            &RED,
+        ))?;
 
         chart.draw_series(PointSeries::of_element(
             [(test_point.axis(0), test_point.axis(1))],

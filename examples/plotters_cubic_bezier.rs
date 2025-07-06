@@ -116,6 +116,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let point_off_line = PointN::new([4.1, 0.5]);
         let (test_point, test_t, distance) = bezier.closest_to_point(point_off_line);
+        let curvature = bezier.curvature(test_t);
         // let test_t = 0.6;
         // let test_point = bezier.eval(test_t);
 
@@ -127,17 +128,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             derivative_test_point.axis(1) / d_len,
         );
 
-        let curvature = bezier.curvature(test_t);
+        let tangent_point = PointN::new([
+            test_point.axis(0) + tangent_x,
+            test_point.axis(1) + tangent_y,
+        ]);
 
-        let (rel_center_x, rel_center_y) = {
-            let normal_x = -tangent_y;
-            let normal_y = tangent_x;
-            if curvature.abs() > 0.1 {
-                let radius = 1.0 / curvature;
-                (normal_x * radius, normal_y * radius)
-            } else {
-                (normal_x * 10.0, normal_y * 10.0)
-            }
+        let turn_center = {
+            let (rel_center_x, rel_center_y) = {
+                let normal_x = -tangent_y;
+                let normal_y = tangent_x;
+                if curvature.abs() > 0.1 {
+                    let radius = 1.0 / curvature;
+                    (normal_x * radius, normal_y * radius)
+                } else {
+                    (normal_x * 10.0, normal_y * 10.0)
+                }
+            };
+            PointN::new([
+                test_point.axis(0) + rel_center_x,
+                test_point.axis(1) + rel_center_y,
+            ])
         };
 
         chart.draw_series(PointSeries::of_element(
@@ -183,28 +193,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // .label("test point");
         // .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
 
-        chart.draw_series(LineSeries::new(
-            [
-                (test_point.axis(0), test_point.axis(1)),
-                (
-                    test_point.axis(0) + tangent_x,
-                    test_point.axis(1) + tangent_y,
-                ),
-            ],
+        chart.draw_series(PointSeries::of_element(
+            [(test_point.axis(0), test_point.axis(1))],
+            5,
             &BLUE,
+            &|coord, size, style| {
+                EmptyElement::at(coord)
+                    + Circle::new((0, 0), size, style)
+                    + Text::new(
+                        format!(
+                            "test point t = {test_t:.2}, curvature {curvature:.2}, radius {:.2}",
+                            1.0 / curvature
+                        ),
+                        (0, 15),
+                        ("sans-serif", 15).into_font(),
+                    )
+            },
         ))?;
-        // .label("test point derivative")
-        // .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
 
         chart.draw_series(LineSeries::new(
             [
+                (turn_center.axis(0), turn_center.axis(1)),
                 (test_point.axis(0), test_point.axis(1)),
-                (
-                    test_point.axis(0) + rel_center_x,
-                    test_point.axis(1) + rel_center_y,
-                ),
+                (tangent_point.axis(0), tangent_point.axis(1)),
             ],
             &BLUE,
+        ))?;
+
+        chart.draw_series(PointSeries::of_element(
+            [(turn_center.axis(0), turn_center.axis(1))],
+            5,
+            &BLUE,
+            &|coord, size, style| {
+                EmptyElement::at(coord)
+                    + Circle::new((0, 0), size, style)
+                    + Text::new("turn center", (0, 15), ("sans-serif", 15).into_font())
+            },
         ))?;
     }
 

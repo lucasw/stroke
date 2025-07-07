@@ -120,23 +120,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // let test_t = 0.6;
         // let test_point = bezier.eval(test_t);
 
-        // TODO(lucasw) make this a bezier function
-        let derivative_test_point = bezier.derivative().eval(test_t);
-        let d_len = derivative_test_point.squared_length().sqrt();
-        let (tangent_x, tangent_y) = (
-            derivative_test_point.axis(0) / d_len,
-            derivative_test_point.axis(1) / d_len,
-        );
+        let tangent = bezier.tangent(test_t);
 
-        let tangent_point = PointN::new([
-            test_point.axis(0) + tangent_x,
-            test_point.axis(1) + tangent_y,
-        ]);
+        let tangent_point = test_point + tangent;
 
         let turn_center = {
             let (rel_center_x, rel_center_y) = {
-                let normal_x = -tangent_y;
-                let normal_y = tangent_x;
+                let normal_x = -tangent.axis(1);
+                let normal_y = tangent.axis(0);
                 if curvature.abs() > 0.1 {
                     let radius = 1.0 / curvature;
                     (normal_x * radius, normal_y * radius)

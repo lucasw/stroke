@@ -150,6 +150,14 @@ where
             + self.end.axis(axis) * c3
     }
 
+    /// Return the tangent at position t
+    pub fn tangent(&self, t: P::Scalar) -> P {
+        let derivative = self.derivative().eval(t);
+        let d_len = derivative.squared_length().sqrt();
+        let scale = P::Scalar::from(1.0) / d_len;
+        derivative * scale
+    }
+
     // curvature is 1.0 / radius, or 0.0 when radius is close to zero
     pub fn curvature(&self, t: P::Scalar) -> P::Scalar {
         let d = self.derivative();

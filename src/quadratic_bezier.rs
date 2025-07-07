@@ -3,13 +3,13 @@ use super::Point;
 use super::*;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct QuadraticBezier<P: Point> {
+pub struct QuadraticBezier<P: Point, const PDIM: usize> {
     pub(crate) start: P,
     pub(crate) ctrl: P,
     pub(crate) end: P,
 }
 
-impl<P: Point> QuadraticBezier<P>
+impl<P, const PDIM: usize> QuadraticBezier<P, PDIM>
 where
     P: Point,
 {
@@ -81,7 +81,7 @@ where
     /// The derivative is also a bezier curve but of degree n-1.
     /// In the case of a quadratic derivative it is just a line segment
     /// which also implementes eval(), as it is just a linear bezier curve.
-    pub fn derivative(&self) -> LineSegment<P> {
+    pub fn derivative(&self) -> LineSegment<P, PDIM> {
         LineSegment {
             start: (self.ctrl - self.start) * 2.0,
             end: (self.end - self.ctrl) * 2.0,
@@ -227,7 +227,7 @@ where
     }
 
     /// Returns the line segment formed by the curve's start and endpoint
-    pub fn baseline(&self) -> LineSegment<P> {
+    pub fn baseline(&self) -> LineSegment<P, PDIM> {
         LineSegment {
             start: self.start,
             end: self.end,
@@ -292,8 +292,8 @@ where
     }
 
     /// Return the bounding box of the curve as an array of (min, max) tuples for each dimension (its index)
-    pub fn bounding_box(&self) -> [(P::Scalar, P::Scalar); P::DIM] {
-        let mut bounds = [(0.0.into(), 0.0.into()); P::DIM];
+    pub fn bounding_box(&self) -> [(P::Scalar, P::Scalar); PDIM] {
+        let mut bounds = [(0.0.into(), 0.0.into()); PDIM];
         let derivative = self.derivative();
         // calculate coefficients for the derivative as a function of t: at + b
         // po: [1, -1]
@@ -425,7 +425,7 @@ mod tests {
     fn eval_equivalence() {
         // all eval methods should be approximately equivalent for well defined test cases
         // and not equivalent where numerical stability becomes an issue for normal eval
-        let bezier = QuadraticBezier::new(
+        let bezier = QuadraticBezier::<_, 2>::new(
             PointN::new([0f64, 1.77f64]),
             PointN::new([4.3f64, 3f64]),
             PointN::new([3.2f64, -4f64]),
@@ -444,7 +444,7 @@ mod tests {
     #[test]
     fn split_equivalence() {
         // chose some arbitrary control points and construct a cubic bezier
-        let bezier = QuadraticBezier {
+        let bezier = QuadraticBezier::<_, 2> {
             start: PointN::new([0f64, 1.77f64]),
             ctrl: PointN::new([4.3f64, 3f64]),
             end: PointN::new([3.2f64, -4f64]),
@@ -469,7 +469,7 @@ mod tests {
     #[test]
     fn bounding_box_contains() {
         // check if bounding box for a curve contains all points (with some approximation error)
-        let bezier = QuadraticBezier {
+        let bezier = QuadraticBezier::<_, 2> {
             start: PointN::new([0f64, 1.77f64]),
             ctrl: PointN::new([4.3f64, -3f64]),
             end: PointN::new([3.2f64, 4f64]),
@@ -493,7 +493,7 @@ mod tests {
     #[test]
     fn distance_to_point() {
         // degree 3, 4 control points => 4+3+1=8 knots
-        let curve = QuadraticBezier {
+        let curve = QuadraticBezier::<_, 2> {
             start: PointN::new([0f64, 1.77f64]),
             ctrl: PointN::new([4.3f64, 3f64]),
             end: PointN::new([3.2f64, -4f64]),

@@ -6,12 +6,12 @@ use super::*;
 /// A LineSegment is equal to a linear Bezier curve, which is why there is no
 /// specialized type for that case.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct LineSegment<P> {
+pub struct LineSegment<P, const PDIM: usize> {
     pub(crate) start: P,
     pub(crate) end: P,
 }
 
-impl<P> LineSegment<P>
+impl<P, const PDIM: usize> LineSegment<P, PDIM>
 where
     P: Point,
 {
@@ -99,8 +99,8 @@ where
     }
 
     /// Return the bounding box of the line as an array of (min, max) tuples for each dimension (its index)
-    pub fn bounding_box(&self) -> [(P::Scalar, P::Scalar); P::DIM] {
-        let mut bounds = [(P::Scalar::default(), P::Scalar::default()); P::DIM];
+    pub fn bounding_box(&self) -> [(P::Scalar, P::Scalar); PDIM] {
+        let mut bounds = [(P::Scalar::default(), P::Scalar::default()); PDIM];
 
         // find min/max for that particular axis
         // TODO shoul be rewritten once 'Iterator' is implemented on P to get rid of .axis() method
@@ -124,9 +124,11 @@ mod tests {
     /// yields equal distance to the start (p)/end (q) points (up to machine accuracy).
     #[test]
     fn line_segment_interpolation() {
-        let line = LineSegment {
-            start: PointN::new([0f64, 1.77f64]),
-            end: PointN::new([4.3f64, 3f64]),
+        let start = PointN::new([0f64, 1.77f64]);
+        let end = PointN::new([4.3f64, 3f64]);
+        let line = LineSegment::<_, 2> {
+            start,
+            end,
         };
 
         let mid = line.eval(0.5);
@@ -137,7 +139,7 @@ mod tests {
     #[test]
     fn line_segment_distance_to_point() {
         // 3D cause why not
-        let line = LineSegment {
+        let line = LineSegment::<_, 2> {
             start: PointN::new([0f64, 1f64, 0f64]),
             end: PointN::new([3f64, 1f64, 0f64]),
         };

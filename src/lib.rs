@@ -2,7 +2,7 @@
 #![forbid(unsafe_code)]
 #![allow(incomplete_features)]
 // this is needed to use expressions in const generics such as N-1 (see curve derivatives)
-#![feature(generic_const_exprs)]
+//#![feature(generic_const_exprs)]
 
 // this feature was needed for tinyvec < 2.0 to compile for const generic arrays like ArrayVec<[f32;N]>
 //#![feature(min_const_generics)]
@@ -24,14 +24,14 @@ extern crate tinyvec;
 use tinyvec::ArrayVec;
 
 // abstraction types
-pub mod bezier_segment;
+// pub mod bezier_segment;
 // specialized types
 pub mod cubic_bezier;
 pub mod line;
 pub mod quadratic_bezier;
 // generic types
-pub mod bezier;
-pub mod bspline;
+// pub mod bezier;
+// pub mod bspline;
 pub mod point_generic;
 
 // Traits
@@ -41,8 +41,8 @@ pub mod spline;
 mod roots;
 
 // export common types at crate root
-pub use bezier::Bezier;
-pub use bspline::BSpline;
+// pub use bezier::Bezier;
+// pub use bspline::BSpline;
 pub use cubic_bezier::CubicBezier;
 pub use line::LineSegment;
 pub use point::Point;

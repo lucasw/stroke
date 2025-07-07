@@ -8,7 +8,7 @@ use stroke::PointN;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // control points for the cubic bezier curve
-    let cpoints = vec![
+    let cpoints = [
         (0f64, 1.77f64),
         (1.1f64, -1f64),
         (5.3f64, 1.4f64),
@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         PointN::new([cpoints[3].0, cpoints[3].1]),
     );
 
-    let bounds = bezier.bounding_box();
+    let bounds: [_; 2] = bezier.bounding_box();
     let xmin = bounds[0].0;
     let xmax = bounds[0].1;
     let dx = xmax - xmin;

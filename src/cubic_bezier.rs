@@ -10,7 +10,7 @@ use super::*;
 // TODO(lucasw) the vim syntax highlighting doesn't like the triple slashes followed by triple
 // back-tick above, but putting the ':' on the same line avoids it
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct CubicBezier<P> {
+pub struct CubicBezier<P, const PDIM: usize> {
     pub(crate) start: P,
     pub(crate) ctrl1: P,
     pub(crate) ctrl2: P,
@@ -18,7 +18,7 @@ pub struct CubicBezier<P> {
 }
 
 //#[allow(dead_code)]
-impl<P> CubicBezier<P>
+impl<P, const PDIM: usize> CubicBezier<P, PDIM>
 where
     P: Point,
 {
@@ -120,7 +120,7 @@ where
     /// Return the derivative curve.
     /// The derivative is also a bezier curve but of degree n-1 (cubic->quadratic)
     /// Since it returns the derivative function, eval() needs to be called separately
-    pub fn derivative(&self) -> QuadraticBezier<P> {
+    pub fn derivative(&self) -> QuadraticBezier<P, PDIM> {
         QuadraticBezier {
             start: (self.ctrl1 - self.start) * 3.0,
             ctrl: (self.ctrl2 - self.ctrl1) * 3.0,
@@ -262,7 +262,7 @@ where
         distance
     }
 
-    pub fn baseline(&self) -> LineSegment<P> {
+    pub fn baseline(&self) -> LineSegment<P, PDIM> {
         LineSegment {
             start: self.start,
             end: self.end,
@@ -404,7 +404,7 @@ where
     }
 
     /// Return the bounding box of the curve as an array of (min, max) tuples for each dimension (its index)
-    pub fn bounding_box(&self) -> [(P::Scalar, P::Scalar); P::DIM] {
+    pub fn bounding_box(&self) -> [(P::Scalar, P::Scalar); PDIM] {
         // calculate coefficients for the derivative: at^2 + bt + c
         // from the expansion of the cubic bezier curve: sum_i=0_to_3( binomial(3, i) * t^i * (1-t)^(n-i) )
         // yields coeffcients
@@ -412,7 +412,7 @@ where
         // p1: [0,  2, -2]
         // p2: [0,  0,  1]
         //      c   b   a
-        let mut bounds = [(0.0.into(), 0.0.into()); P::DIM];
+        let mut bounds = [(0.0.into(), 0.0.into()); PDIM];
         let derivative = self.derivative();
         // calculate coefficients for derivative
         let a: P = derivative.start + derivative.ctrl * -2.0 + derivative.end;
@@ -469,25 +469,26 @@ mod tests {
         let max_drift_perc = 0.019608; // radial drift percent
         let max_error = max_drift_perc * 0.01; // absolute max radial error
 
-        let bezier_quadrant_1 = CubicBezier {
+        const PDIM: usize = 2;
+        let bezier_quadrant_1 = CubicBezier::<_, PDIM> {
             start: PointN::new([0f64, 1f64]),
             ctrl1: PointN::new([c, 1f64]),
             ctrl2: PointN::new([1f64, c]),
             end: PointN::new([1f64, 0f64]),
         };
-        let bezier_quadrant_2 = CubicBezier {
+        let bezier_quadrant_2 = CubicBezier::<_, PDIM> {
             start: PointN::new([1f64, 0f64]),
             ctrl1: PointN::new([1f64, -c]),
             ctrl2: PointN::new([c, -1f64]),
             end: PointN::new([0f64, -1f64]),
         };
-        let bezier_quadrant_3 = CubicBezier {
+        let bezier_quadrant_3 = CubicBezier::<_, PDIM> {
             start: PointN::new([0f64, -1f64]),
             ctrl1: PointN::new([-c, -1f64]),
             ctrl2: PointN::new([-1f64, -c]),
             end: PointN::new([-1f64, 0f64]),
         };
-        let bezier_quadrant_4 = CubicBezier {
+        let bezier_quadrant_4 = CubicBezier::<_, PDIM> {
             start: PointN::new([-1f64, 0f64]),
             ctrl1: PointN::new([-1f64, c]),
             ctrl2: PointN::new([-c, 1f64]),
@@ -529,25 +530,25 @@ mod tests {
         let pi = PI;
         let tau = 2. * pi;
 
-        let bezier_quadrant_1 = CubicBezier {
+        let bezier_quadrant_1 = CubicBezier::<_, 2> {
             start: PointN::new([0f64, 1f64]),
             ctrl1: PointN::new([c, 1f64]),
             ctrl2: PointN::new([1f64, c]),
             end: PointN::new([1f64, 0f64]),
         };
-        let bezier_quadrant_2 = CubicBezier {
+        let bezier_quadrant_2 = CubicBezier::<_, 2> {
             start: PointN::new([1f64, 0f64]),
             ctrl1: PointN::new([1f64, -c]),
             ctrl2: PointN::new([c, -1f64]),
             end: PointN::new([0f64, -1f64]),
         };
-        let bezier_quadrant_3 = CubicBezier {
+        let bezier_quadrant_3 = CubicBezier::<_, 2> {
             start: PointN::new([0f64, -1f64]),
             ctrl1: PointN::new([-c, -1f64]),
             ctrl2: PointN::new([-1f64, -c]),
             end: PointN::new([-1f64, 0f64]),
         };
-        let bezier_quadrant_4 = CubicBezier {
+        let bezier_quadrant_4 = CubicBezier::<_, 2> {
             start: PointN::new([-1f64, 0f64]),
             ctrl1: PointN::new([-1f64, c]),
             ctrl2: PointN::new([-c, 1f64]),
@@ -566,7 +567,7 @@ mod tests {
     fn eval_equivalence_casteljau() {
         // all eval methods should be approximately equivalent for well defined test cases
         // and not equivalent where numerical stability becomes an issue for normal eval
-        let bezier = CubicBezier::new(
+        let bezier = CubicBezier::<_, 2>::new(
             PointN::new([0f64, 1.77f64]),
             PointN::new([1.1f64, -1f64]),
             PointN::new([4.3f64, 3f64]),
@@ -586,7 +587,7 @@ mod tests {
     #[test]
     fn split_equivalence() {
         // chose some arbitrary control points and construct a cubic bezier
-        let bezier = CubicBezier {
+        let bezier = CubicBezier::<_, 2> {
             start: PointN::new([0f64, 1.77f64]),
             ctrl1: PointN::new([2.9f64, 0f64]),
             ctrl2: PointN::new([4.3f64, 3f64]),
@@ -612,7 +613,7 @@ mod tests {
     #[test]
     fn bounding_box_contains() {
         // check if bounding box for a curve contains all points (with some approximation error)
-        let bezier = CubicBezier {
+        let bezier = CubicBezier::<_, 2> {
             start: PointN::new([0f64, 1.77f64]),
             ctrl1: PointN::new([2.9f64, 0f64]),
             ctrl2: PointN::new([4.3f64, -3f64]),
@@ -639,7 +640,7 @@ mod tests {
     #[test]
     fn distance_to_point() {
         // degree 3, 4 control points => 4+3+1=8 knots
-        let curve = CubicBezier {
+        let curve = CubicBezier::<_, 2> {
             start: PointN::new([0f64, 1.77f64]),
             ctrl1: PointN::new([1.1f64, -1f64]),
             ctrl2: PointN::new([4.3f64, 3f64]),

@@ -114,7 +114,7 @@ where
                 dmin = (candidate - point).squared_length();
             }
         }
-        dmin.sqrt()
+        libm::sqrt(dmin)
     }
 
     pub fn split(&self, t: NativeFloat) -> (Self, Self) {
@@ -246,7 +246,7 @@ where
             let p1 = self.eval(t);
             let p2 = self.eval(t + stepsize);
 
-            arclen = arclen + (p1 - p2).squared_length().sqrt();
+            arclen = arclen + libm::sqrt((p1 - p2).squared_length());
         }
         arclen
     }
@@ -259,7 +259,6 @@ mod tests {
     use super::QuadraticBezier;
     use super::*;
 
-    //use crate::num_traits::{Pow};
     #[test]
     fn eval_endpoints() {
         let points = [

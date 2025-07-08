@@ -52,7 +52,7 @@ where
         let l2 = (self.end - self.start).squared_length();
         // if start and endpoint are approx the same, return the distance to either
         if l2 < NativeFloat::from(EPSILON) {
-            (self.start - p).squared_length().sqrt()
+            sqrt((self.start - p).squared_length())
         } else {
             let v1 = p - self.start;
             let v2 = self.end - self.start;
@@ -74,7 +74,7 @@ where
             }
             let projection = self.start + (self.end - self.start) * t; // Projection falls on the segment
 
-            (p - projection).squared_length().sqrt()
+            sqrt((p - projection).squared_length())
         }
     }
 
@@ -145,7 +145,7 @@ mod tests {
         };
         // dist to start should be 4; dist to end should be 5
         let p1 = PointN::new([0.0, 5.0, 0.0]);
-        assert!(line.distance_to_point(p1) - 4.0.abs() < EPSILON);
+        assert!((line.distance_to_point(p1) - 4.0).abs() < EPSILON);
         assert!(((p1 - line.start).squared_length().sqrt() - 4.0).abs() < EPSILON);
         assert!(((p1 - line.end).squared_length().sqrt() - 5.0).abs() < EPSILON);
         // dist to midpoint (t=0.5) should be 1

@@ -9,7 +9,7 @@ use stroke::f32::PointN;
 type Float = f32;
 
 struct Curve {
-    pub bezier: CubicBezier<PointN<Float, 2>, 2>,
+    pub bezier: CubicBezier<PointN<2>, 2>,
     pub xmin: Float,
     pub ymin: Float,
     pub xmax: Float,

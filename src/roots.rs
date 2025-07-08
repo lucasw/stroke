@@ -39,7 +39,7 @@ pub(crate) fn roots_square(
     // is quadratic equation
     let delta = b * b - a * c * 4.0;
     if delta > 0.0 {
-        let sqrt_delta = delta.sqrt();
+        let sqrt_delta = sqrt(delta);
         result.push((-b - sqrt_delta) / (a * 2.0));
         result.push((-b + sqrt_delta) / (a * 2.0));
     } else if delta.abs() < EPSILON {
@@ -76,7 +76,7 @@ pub(crate) fn roots_cubic(
         // is quadratic equation
         let delta = c * c - b * d * 4.0;
         if delta > 0.0 {
-            let sqrt_delta = delta.sqrt();
+            let sqrt_delta = sqrt(delta);
             result.push((-c - sqrt_delta) / (b * 2.0));
             result.push((-c + sqrt_delta) / (b * 2.0));
         } else if delta.abs() < EPSILON {
@@ -97,11 +97,11 @@ pub(crate) fn roots_cubic(
     let delta_01: NativeFloat = delta0 * delta0 * delta0 + delta1 * delta1;
 
     if delta_01 >= NativeFloat::from(0.0) {
-        let delta_p_sqrt: NativeFloat = delta1 + delta_01.sqrt();
-        let delta_m_sqrt: NativeFloat = delta1 - delta_01.sqrt();
+        let delta_p_sqrt: NativeFloat = delta1 + sqrt(delta_01);
+        let delta_m_sqrt: NativeFloat = delta1 - sqrt(delta_01);
 
-        let s = delta_p_sqrt.signum() * delta_p_sqrt.abs().powf(frac_1_3);
-        let t = delta_m_sqrt.signum() * delta_m_sqrt.abs().powf(frac_1_3);
+        let s = delta_p_sqrt.signum() * pow(delta_p_sqrt.abs(), frac_1_3);
+        let t = delta_m_sqrt.signum() * pow(delta_m_sqrt.abs(), frac_1_3);
 
         result.push(-bn * frac_1_3 + (s + t));
 
@@ -110,11 +110,11 @@ pub(crate) fn roots_cubic(
             result.push(-bn * frac_1_3 - (s + t) / 2.0);
         }
     } else {
-        let theta = (delta1 / (-delta0 * delta0 * delta0).sqrt()).acos();
-        let two_sqrt_delta0 = (-delta0).sqrt() * 2.0;
-        result.push(two_sqrt_delta0 * Float::cos(theta * frac_1_3) - bn * frac_1_3);
-        result.push(two_sqrt_delta0 * Float::cos((theta + 2.0 * PI) * frac_1_3) - bn * frac_1_3);
-        result.push(two_sqrt_delta0 * Float::cos((theta + 4.0 * PI) * frac_1_3) - bn * frac_1_3);
+        let theta = acos(delta1 / sqrt(-delta0 * delta0 * delta0));
+        let two_sqrt_delta0 = sqrt(-delta0) * 2.0;
+        result.push(two_sqrt_delta0 * cos(theta * frac_1_3) - bn * frac_1_3);
+        result.push(two_sqrt_delta0 * cos((theta + 2.0 * PI) * frac_1_3) - bn * frac_1_3);
+        result.push(two_sqrt_delta0 * cos((theta + 4.0 * PI) * frac_1_3) - bn * frac_1_3);
     }
 
     result

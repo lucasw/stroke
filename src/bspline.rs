@@ -487,10 +487,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    //use std;
-    use super::PointN;
+    // use super::PointN;
     use super::*;
-    //use crate::num_traits::{Pow};
 
     #[test]
     fn degree_1_clamped_construct_and_eval_endpoints() {

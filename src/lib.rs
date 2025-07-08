@@ -17,9 +17,6 @@
 
 use core::ops::{Add, Mul, Sub};
 
-extern crate num_traits;
-use num_traits::float::Float;
-
 extern crate tinyvec;
 use tinyvec::ArrayVec;
 // export common types at crate root
@@ -30,6 +27,10 @@ pub mod f32 {
     pub type NativeFloat = f32;
     const EPSILON: core::primitive::f32 = core::primitive::f32::EPSILON;
     use core::f32::consts::PI;
+    use libm::acosf as acos;
+    use libm::cosf as cos;
+    use libm::powf as pow;
+    use libm::sqrtf as sqrt;
 
     // abstraction types
     // pub mod bezier_segment;
@@ -78,6 +79,10 @@ pub mod f64 {
     pub type NativeFloat = f64;
     const EPSILON: core::primitive::f64 = core::primitive::f64::EPSILON;
     use core::f64::consts::PI;
+    use libm::acos;
+    use libm::cos;
+    use libm::pow;
+    use libm::sqrt;
 
     // abstraction types
     // pub mod bezier_segment;

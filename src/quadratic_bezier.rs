@@ -153,7 +153,7 @@ where
             let p1 = self.eval_casteljau(t);
             let p2 = self.eval_casteljau(t + stepsize);
 
-            arclen += (p1 - p2).squared_length().sqrt();
+            arclen += sqrt((p1 - p2).squared_length());
         }
         arclen
     }
@@ -182,7 +182,7 @@ where
         // is quadratic equation
         let delta = b * b - a * c * 4.0;
         if delta > 0.0 {
-            let sqrt_delta = delta.sqrt();
+            let sqrt_delta = sqrt(delta);
             result.push((-b - sqrt_delta) / (a * 2.0));
             result.push((-b + sqrt_delta) / (a * 2.0));
         } else if delta.abs() < EPSILON {
@@ -223,7 +223,7 @@ where
                 dmin = (candidate - point).squared_length();
             }
         }
-        dmin.sqrt()
+        sqrt(dmin)
     }
 
     /// Returns the line segment formed by the curve's start and endpoint
@@ -331,7 +331,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    //use crate::num_traits::{Pow};
     use super::PointN;
     //TODO test needs to be adapted for 8 segments of quadratic order
     // #[test]

@@ -2,10 +2,9 @@ use core::iter::{IntoIterator, Sum};
 use core::slice;
 
 use super::*;
-//use num_traits::{Float, FromPrimitive};
-use super::Point;
+// use super::Point;
 
-/// Point with dimensions of constant generic size N and of generic type T
+/// Point with dimensions of constant generic size N and of type NatiiveFloat
 ///
 /// (Implemented as Newtype Pattern on an array
 /// see book or https://www.worthe-it.co.za/blog/2020-10-31-newtype-pattern-in-rust.html)
@@ -13,24 +12,22 @@ use super::Point;
 /// the point trait, so you are free to use your own
 /// Point/Coord/Vec structures instead by implementing the (small) trait
 #[derive(Debug, Copy, Clone)]
-pub struct PointN<T, const N: usize>([T; N]);
+pub struct PointN<const N: usize>([NativeFloat; N]);
 
-impl<T, const N: usize> PointN<T, N> {
-    pub fn new(array: [T; N]) -> Self {
+impl<const N: usize> PointN<N> {
+    pub fn new(array: [NativeFloat; N]) -> Self {
         PointN(array)
     }
 }
 
 /// Initialize with the Default value for the underlying type
-impl<T: Default + Copy, const N: usize> Default for PointN<T, N> {
+impl<const N: usize> Default for PointN<N> {
     fn default() -> Self {
-        PointN([T::default(); N])
+        PointN([NativeFloat::default(); N])
     }
 }
 
-impl<T, const N: usize> PartialEq for PointN<T, N>
-where
-    T: PartialOrd,
+impl<const N: usize> PartialEq for PointN<N>
 {
     fn eq(&self, other: &Self) -> bool {
         for i in 0..N {
@@ -42,13 +39,11 @@ where
     }
 }
 
-impl<T, const N: usize> Add for PointN<T, N>
-where
-    T: Add<Output = T> + Clone + Copy,
+impl<const N: usize> Add for PointN<N>
 {
     type Output = Self;
 
-    fn add(self, other: PointN<T, N>) -> PointN<T, N> {
+    fn add(self, other: PointN<N>) -> PointN<N> {
         let mut res = self;
         for i in 0..N {
             res.0[i] = self.0[i] + other.0[i];
@@ -59,13 +54,11 @@ where
 
 /// This is not required by the Point trait or library but
 /// convenient if you want to use the type externally
-impl<T, const N: usize> Add<T> for PointN<T, N>
-where
-    T: Add<Output = T> + Clone + Copy,
+impl<const N: usize> Add<NativeFloat> for PointN<N>
 {
     type Output = Self;
 
-    fn add(self, _rhs: T) -> PointN<T, N> {
+    fn add(self, _rhs: NativeFloat) -> PointN<N> {
         let mut res = self;
         for i in 0..N {
             res.0[i] = self.0[i] + _rhs;
@@ -74,13 +67,11 @@ where
     }
 }
 
-impl<T, const N: usize> Sub for PointN<T, N>
-where
-    T: Sub<Output = T> + Clone + Copy,
+impl<const N: usize> Sub for PointN<N>
 {
     type Output = Self;
 
-    fn sub(self, other: PointN<T, N>) -> PointN<T, N> {
+    fn sub(self, other: PointN<N>) -> PointN<N> {
         let mut res = self;
         for i in 0..N {
             res.0[i] = self.0[i] - other.0[i];
@@ -91,13 +82,11 @@ where
 
 /// This is not required by the Point trait or library but
 /// convenient if you want to use the type externally
-impl<T, const N: usize> Sub<T> for PointN<T, N>
-where
-    T: Sub<Output = T> + Clone + Copy,
+impl<const N: usize> Sub<NativeFloat> for PointN<N>
 {
     type Output = Self;
 
-    fn sub(self, _rhs: T) -> PointN<T, N> {
+    fn sub(self, _rhs: NativeFloat) -> PointN<N> {
         let mut res = self;
         for i in 0..N {
             res.0[i] = self.0[i] - _rhs;
@@ -106,27 +95,25 @@ where
     }
 }
 
-impl<T, const N: usize, U> Mul<U> for PointN<T, N>
+impl<const N: usize> Mul<NativeFloat> for PointN<N>
 where
     // The mulitplication is done by mulitpling T * U => T, this
     // trait bound for T will specify this requirement as the mul operator is
     // translated to using the first operand as self and the second as rhs.
-    T: Mul<U, Output = T> + Clone + Copy, //+ SizedFloat,
-    U: Clone + Copy,
 {
-    type Output = PointN<T, N>;
+    type Output = PointN<N>;
 
-    fn mul(self, _rhs: U) -> PointN<T, N> {
+    fn mul(self, rhs: NativeFloat) -> PointN<N> {
         let mut res = self;
         for i in 0..res.0.len() {
-            res.0[i] = res.0[i] * _rhs;
+            res.0[i] = res.0[i] * rhs;
         }
         res
     }
 }
 
-impl<T, const N: usize> IntoIterator for PointN<T, N> {
-    type Item = T;
+impl<const N: usize> IntoIterator for PointN<N> {
+    type Item = NativeFloat;
     type IntoIter = core::array::IntoIter<Self::Item, N>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -134,29 +121,17 @@ impl<T, const N: usize> IntoIterator for PointN<T, N> {
     }
 }
 
-impl<'a, T, const N: usize> IntoIterator for &'a mut PointN<T, N> {
-    type Item = &'a mut T;
-    type IntoIter = slice::IterMut<'a, T>;
+impl<'a, const N: usize> IntoIterator for &'a mut PointN<N> {
+    type Item = &'a mut NativeFloat;
+    type IntoIter = slice::IterMut<'a, NativeFloat>;
 
-    fn into_iter(self) -> slice::IterMut<'a, T> {
+    fn into_iter(self) -> slice::IterMut<'a, NativeFloat> {
         self.0.iter_mut()
     }
 }
 
-impl<T, const N: usize> Point for PointN<T, N>
+impl<const N: usize> Point for PointN<N>
 where
-    T: Float
-        + Copy
-        + Default
-        + Add<T, Output = T>
-        + Add<NativeFloat, Output = T>
-        + Sub<T, Output = T>
-        + Sub<NativeFloat, Output = T>
-        + Mul<T, Output = T>
-        + Mul<NativeFloat, Output = T>
-        + Sum<NativeFloat>
-        + From<NativeFloat>
-        + Into<NativeFloat>,
 {
     // type Scalar = NativeFloat;
     const DIM: usize = { N };
@@ -167,9 +142,9 @@ where
     }
 
     fn squared_length(&self) -> NativeFloat {
-        let mut sqr_dist = 0.0;
+        let mut sqr_dist: NativeFloat = 0.0;
         for i in 0..N {
-            sqr_dist += (self.0[i] * self.0[i]).into();
+            sqr_dist += self.0[i] * self.0[i];
         }
         sqr_dist
     }

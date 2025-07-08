@@ -86,7 +86,7 @@ where
             let p1 = self.eval_casteljau(t);
             let p2 = self.eval_casteljau(t + stepsize);
 
-            arclen += (p1 - p2).squared_length().sqrt();
+            arclen += sqrt((p1 - p2).squared_length());
         }
         arclen
     }
@@ -155,7 +155,7 @@ where
     /// Return the tangent at position t
     pub fn tangent(&self, t: NativeFloat) -> P {
         let derivative = self.derivative().eval(t);
-        let d_len = derivative.squared_length().sqrt();
+        let d_len = sqrt(derivative.squared_length());
         let scale = 1.0 / d_len;
         derivative * scale
     }
@@ -173,7 +173,7 @@ where
         let ddy = dd_t.axis(1);
 
         let numerator = dx * ddy - dy * ddx;
-        let denominator = (dx * dx + dy * dy).powf(1.5);
+        let denominator = pow(dx * dx + dy * dy, 1.5);
         // this is what graphite bezier solver does
         if denominator.abs() < 1e-3 {
             0.0
@@ -256,7 +256,7 @@ where
                 &point,
             );
         }
-        (closest_point_on_curve, tmin, dmin.sqrt())
+        (closest_point_on_curve, tmin, sqrt(dmin))
     }
 
     pub fn distance_to_point(&self, point: P) -> NativeFloat {
@@ -325,7 +325,7 @@ where
             // is quadratic equation
             let delta = c * c - b * d * 4.0;
             if delta > 0.0 {
-                let sqrt_delta = delta.sqrt();
+                let sqrt_delta = sqrt(delta);
                 result.push((-c - sqrt_delta) / (b * 2.0));
                 result.push((-c + sqrt_delta) / (b * 2.0));
             } else if delta.abs() < EPSILON {
@@ -346,11 +346,11 @@ where
         let delta_01: NativeFloat = delta0 * delta0 * delta0 + delta1 * delta1;
 
         if delta_01 >= NativeFloat::from(0.0) {
-            let delta_p_sqrt: NativeFloat = delta1 + delta_01.sqrt();
-            let delta_m_sqrt: NativeFloat = delta1 - delta_01.sqrt();
+            let delta_p_sqrt: NativeFloat = delta1 + sqrt(delta_01);
+            let delta_m_sqrt: NativeFloat = delta1 - sqrt(delta_01);
 
-            let s = delta_p_sqrt.signum() * delta_p_sqrt.abs().powf(frac_1_3);
-            let t = delta_m_sqrt.signum() * delta_m_sqrt.abs().powf(frac_1_3);
+            let s = pow(delta_p_sqrt.signum() * delta_p_sqrt.abs(), frac_1_3);
+            let t = pow(delta_m_sqrt.signum() * delta_m_sqrt.abs(), frac_1_3);
 
             result.push(-bn * frac_1_3 + (s + t));
 
@@ -359,13 +359,14 @@ where
                 result.push(-bn * frac_1_3 - (s + t) / 2.0);
             }
         } else {
-            let theta = (delta1 / (-delta0 * delta0 * delta0).sqrt()).acos();
-            let two_sqrt_delta0 = (-delta0).sqrt() * 2.0;
-            result.push(two_sqrt_delta0 * Float::cos(theta * frac_1_3) - bn * frac_1_3);
+            // TODO(lucasw) exact same code is in root.rs?
+            let theta = acos(delta1 / sqrt(-delta0 * delta0 * delta0));
+            let two_sqrt_delta0 = sqrt(-delta0) * 2.0;
+            result.push(two_sqrt_delta0 * cos(theta * frac_1_3) - bn * frac_1_3);
             result
-                .push(two_sqrt_delta0 * Float::cos((theta + 2.0 * PI) * frac_1_3) - bn * frac_1_3);
+                .push(two_sqrt_delta0 * cos((theta + 2.0 * PI) * frac_1_3) - bn * frac_1_3);
             result
-                .push(two_sqrt_delta0 * Float::cos((theta + 4.0 * PI) * frac_1_3) - bn * frac_1_3);
+                .push(two_sqrt_delta0 * cos((theta + 4.0 * PI) * frac_1_3) - bn * frac_1_3);
         }
 
         result
@@ -460,7 +461,7 @@ mod tests {
     fn circle_approximation_error() {
         // define closure for unit circle
         let circle =
-            |p: PointN<NativeFloat, 2>| -> NativeFloat { p.into_iter().map(|x| x * x).sum::<NativeFloat>().sqrt() - 1.0 };
+            |p: PointN<2>| -> NativeFloat { p.into_iter().map(|x| x * x).sum::<NativeFloat>().sqrt() - 1.0 };
 
         // define control points for 4 bezier segments
         // control points are chosen for minimum radial distance error

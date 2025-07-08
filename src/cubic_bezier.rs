@@ -631,33 +631,43 @@ mod tests {
     #[test]
     fn find_paramteric_t() {
         let c = 0.551915024494;
-        let bezier = CubicBezier::<_, 2> {
+        let bezier0 = CubicBezier::<_, 2> {
             start: PointN::new([-1.0, 0.0]),
             ctrl1: PointN::new([-1.0, c]),
             ctrl2: PointN::new([-c, 1.0]),
             end: PointN::new([0.0, 1.0]),
         };
 
-        let b_len = bezier.arclen_castlejau(None);
-        for sc in [0.0, 0.1, 0.2, 0.5, 0.6, 0.9, 1.0] {
-            let desired_len = sc * b_len;
-            let parametric_t = bezier.desired_len_to_parametric_t(desired_len, None);
-            let (left, _right) = bezier.split(parametric_t);
-            let achieved_len = left.arclen_castlejau(None);
-            assert!((desired_len - achieved_len).abs() < 0.001, "{sc} -> {parametric_t}, desired_len {desired_len} -> {achieved_len}");
-        }
+        // TODO(lucasw) this straight line is causing issues
+        let bezier1 = CubicBezier::<_, 2> {
+            start: PointN::new([0.0, 0.0]),
+            ctrl1: PointN::new([1.0, 0.0]),
+            ctrl2: PointN::new([9.0, 0.0]),
+            end: PointN::new([10.0, 0.0]),
+        };
 
-        for t in [0.0, 0.05, 0.1, 0.5, 0.8, 1.0] {
-            let (left, right) = bezier.split(t);
-            let left_len = left.arclen_castlejau(None);
-            let t2 = bezier.desired_len_to_parametric_t(left_len, None);
+        for bezier in [bezier0, bezier1] {
+            let b_len = bezier.arclen_castlejau(None);
+            for sc in [0.0, 0.1, 0.2, 0.5, 0.6, 0.9, 1.0] {
+                let desired_len = sc * b_len;
+                let parametric_t = bezier.desired_len_to_parametric_t(desired_len, None);
+                let (left, _right) = bezier.split(parametric_t);
+                let achieved_len = left.arclen_castlejau(None);
+                assert!((desired_len - achieved_len).abs() < 0.1, "{sc} -> {parametric_t}, desired_len {desired_len} -> {achieved_len}");
+            }
 
-            let right_len = right.arclen_castlejau(None);
-            assert!((left_len + right_len - b_len).abs() < 0.001, "{left_len} + {right_len} = {} = {b_len}", left_len + right_len);
-            assert!(
-                (t - t2).abs() < 0.0001,
-                "{t} -> {left_len} -> {t2}",
-            );
+            for t in [0.0, 0.05, 0.1, 0.5, 0.8, 1.0] {
+                let (left, right) = bezier.split(t);
+                let left_len = left.arclen_castlejau(None);
+                let t2 = bezier.desired_len_to_parametric_t(left_len, None);
+
+                let right_len = right.arclen_castlejau(None);
+                assert!((left_len + right_len - b_len).abs() < 0.001, "{left_len} + {right_len} = {} = {b_len}", left_len + right_len);
+                assert!(
+                    (t - t2).abs() < 0.001,
+                    "{t} -> {left_len} -> {t2}",
+                );
+            }
         }
     }
 

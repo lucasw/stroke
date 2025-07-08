@@ -91,6 +91,29 @@ where
         arclen
     }
 
+    /// from graphite bezier
+    /// Use Casteljau subdivision, noting that the length is more than the straight line distance from start to end but less than the straight line distance through the handles
+    pub fn arclen_castlejau(&self) -> NativeFloat {
+        let tolerance = Some(0.02);
+
+        fn recurse<P: Point>(a0: P, a1: P, a2: P, a3: P, tolerance: NativeFloat, level: u8) -> NativeFloat {
+            let lower = a0.distance(&a3);
+            let upper = a0.distance(&a1) + a1.distance(&a2) + a2.distance(&a3);
+            if (upper - lower) <= (2. * tolerance) || level >= 8 {
+                return (lower + upper) / 2.;
+            }
+
+            let b1 = (a0 + a1) * 0.5;
+            let t0 = (a1 + a2) * 0.5;
+            let c1 = (a2 + a3) * 0.5;
+            let b2 = (b1 + t0) * 0.5;
+            let c2 = (t0 + c1) * 0.5;
+            let b3 = (b2 + c2) * 0.5;
+            recurse(a0, b1, b2, b3, 0.5 * tolerance, level + 1) + recurse(b3, c2, c1, a3, 0.5 * tolerance, level + 1)
+        }
+        recurse(self.start, self.ctrl1, self.ctrl2, self.end, tolerance.unwrap_or_default(), 0)
+    }
+
     pub fn split(&self, t: NativeFloat) -> (Self, Self) {
         // unrolled de casteljau algorithm
         // _1ab is the first iteration from first (a) to second (b) control point and so on
@@ -561,7 +584,16 @@ mod tests {
             + bezier_quadrant_4.arclen(nsteps)) as NativeFloat;
         //dbg!(circumference);
         //dbg!(tau);
-        assert!(((tau + max_error) > circumference) && ((tau - max_error) < circumference));
+        assert!(((tau + max_error) > circumference) && ((tau - max_error) < circumference),
+            "{tau} +/- {max_error} >/< {circumference}");
+
+        let circumference = (bezier_quadrant_1.arclen_castlejau()
+            + bezier_quadrant_2.arclen_castlejau()
+            + bezier_quadrant_3.arclen_castlejau()
+            + bezier_quadrant_4.arclen_castlejau()) as NativeFloat;
+        let max_error = max_error * 0.1;
+        assert!(((tau + max_error) > circumference) && ((tau - max_error) < circumference),
+            "{tau} +/- {max_error} >/< {circumference}");
     }
 
     #[test]

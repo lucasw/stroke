@@ -93,9 +93,7 @@ where
 
     /// from graphite bezier
     /// Use Casteljau subdivision, noting that the length is more than the straight line distance from start to end but less than the straight line distance through the handles
-    pub fn arclen_castlejau(&self) -> NativeFloat {
-        let tolerance = Some(0.02);
-
+    pub fn arclen_castlejau(&self, tolerance: Option<NativeFloat>) -> NativeFloat {
         fn recurse<P: Point>(a0: P, a1: P, a2: P, a3: P, tolerance: NativeFloat, level: u8) -> NativeFloat {
             let lower = a0.distance(&a3);
             let upper = a0.distance(&a1) + a1.distance(&a2) + a2.distance(&a3);
@@ -587,10 +585,10 @@ mod tests {
         assert!(((tau + max_error) > circumference) && ((tau - max_error) < circumference),
             "{tau} +/- {max_error} >/< {circumference}");
 
-        let circumference = (bezier_quadrant_1.arclen_castlejau()
-            + bezier_quadrant_2.arclen_castlejau()
-            + bezier_quadrant_3.arclen_castlejau()
-            + bezier_quadrant_4.arclen_castlejau()) as NativeFloat;
+        let circumference = (bezier_quadrant_1.arclen_castlejau(None)
+            + bezier_quadrant_2.arclen_castlejau(None)
+            + bezier_quadrant_3.arclen_castlejau(None)
+            + bezier_quadrant_4.arclen_castlejau(None)) as NativeFloat;
         let max_error = max_error * 0.1;
         assert!(((tau + max_error) > circumference) && ((tau - max_error) < circumference),
             "{tau} +/- {max_error} >/< {circumference}");

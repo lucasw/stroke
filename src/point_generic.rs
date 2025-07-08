@@ -1,4 +1,4 @@
-use core::iter::{IntoIterator, Sum};
+use core::iter::IntoIterator;
 use core::slice;
 
 use super::*;
@@ -106,7 +106,7 @@ where
     fn mul(self, rhs: NativeFloat) -> PointN<N> {
         let mut res = self;
         for i in 0..res.0.len() {
-            res.0[i] = res.0[i] * rhs;
+            res.0[i] *= rhs;
         }
         res
     }
@@ -138,7 +138,7 @@ where
 
     fn axis(&self, index: usize) -> NativeFloat {
         assert!(index <= N);
-        self.0[index].into()
+        self.0[index]
     }
 
     fn squared_length(&self) -> NativeFloat {

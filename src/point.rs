@@ -39,4 +39,6 @@ pub trait Point:
     // Returns the squared L2-Norm of the Point interpreted as a Vector
     // TODO this could be moved into the library because computability is ensured by its existing trait bounds
     fn squared_length(&self) -> NativeFloat;
+
+    fn distance(&self, b: &Self) -> NativeFloat;
 }

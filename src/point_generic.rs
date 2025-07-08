@@ -133,7 +133,6 @@ impl<'a, const N: usize> IntoIterator for &'a mut PointN<N> {
 impl<const N: usize> Point for PointN<N>
 where
 {
-    // type Scalar = NativeFloat;
     const DIM: usize = { N };
 
     fn axis(&self, index: usize) -> NativeFloat {
@@ -147,5 +146,23 @@ where
             sqr_dist += self.0[i] * self.0[i];
         }
         sqr_dist
+    }
+
+    fn distance(&self, b: &PointN<N>) -> NativeFloat {
+        sqrt((*self - *b).squared_length())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PointN;
+    use super::*;
+    #[test]
+    fn distance_test() {
+        let a = PointN::new([0.0, 0.0]);
+        let b = PointN::new([1.0, 1.0]);
+        let dist = a.distance(&b);
+        // assert!((dist - sqrt(2.0)).abs() < 0.00001);
+        assert_eq!(dist, sqrt(2.0));
     }
 }

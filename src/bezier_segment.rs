@@ -15,7 +15,7 @@ impl<P> BezierSegment<P>
 where
     P: Point,
 {
-    pub fn eval<F>(&self, t: P::Scalar) -> P {
+    pub fn eval<F>(&self, t: NativeFloat) -> P {
         match self {
             BezierSegment::Linear(segment) => segment.eval(t),
             BezierSegment::Quadratic(segment) => segment.eval(t),
@@ -43,7 +43,7 @@ where
     #[inline]
     pub fn is_linear<F>(&self, tolerance: F) -> bool
     where
-        F: Float + Into<P::Scalar>,
+        F: Float + Into<NativeFloat>,
     {
         match self {
             BezierSegment::Linear(..) => true,
@@ -64,7 +64,7 @@ where
     /// Split this segment into two sub-segments.
     pub fn split<F>(&self, t: F) -> (BezierSegment<P>, BezierSegment<P>)
     where
-        F: Float + Into<P::Scalar>,
+        F: Float + Into<NativeFloat>,
     {
         match self {
             BezierSegment::Linear(segment) => {

@@ -61,7 +61,6 @@ pub(crate) fn roots_cubic(
     d: NativeFloat,
 ) -> ArrayVec<[NativeFloat; 3]> {
     let mut result = ArrayVec::new();
-    let pi: NativeFloat = core::f32::consts::PI.into();
 
     // check if can be handled below cubic order
     if a.abs() < EPSILON {
@@ -114,8 +113,8 @@ pub(crate) fn roots_cubic(
         let theta = (delta1 / (-delta0 * delta0 * delta0).sqrt()).acos();
         let two_sqrt_delta0 = (-delta0).sqrt() * 2.0;
         result.push(two_sqrt_delta0 * Float::cos(theta * frac_1_3) - bn * frac_1_3);
-        result.push(two_sqrt_delta0 * Float::cos((theta + 2.0 * pi) * frac_1_3) - bn * frac_1_3);
-        result.push(two_sqrt_delta0 * Float::cos((theta + 4.0 * pi) * frac_1_3) - bn * frac_1_3);
+        result.push(two_sqrt_delta0 * Float::cos((theta + 2.0 * PI) * frac_1_3) - bn * frac_1_3);
+        result.push(two_sqrt_delta0 * Float::cos((theta + 4.0 * PI) * frac_1_3) - bn * frac_1_3);
     }
 
     result

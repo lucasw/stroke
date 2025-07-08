@@ -19,11 +19,11 @@ where
         LineSegment { start, end }
     }
 
-    pub fn eval(&self, t: P::Scalar) -> P {
+    pub fn eval(&self, t: NativeFloat) -> P {
         self.start + (self.end - self.start) * t
     }
 
-    pub fn split(&self, t: P::Scalar) -> (Self, Self) {
+    pub fn split(&self, t: NativeFloat) -> (Self, Self) {
         // compute the split point by interpolation
         let ctrl_ab = self.start + (self.start - self.end) * t;
 
@@ -48,29 +48,29 @@ where
     // }
 
     /// Return the distance from the LineSegment to Point p by calculating the projection
-    pub fn distance_to_point(&self, p: P) -> P::Scalar {
+    pub fn distance_to_point(&self, p: P) -> NativeFloat {
         let l2 = (self.end - self.start).squared_length();
         // if start and endpoint are approx the same, return the distance to either
-        if l2 < P::Scalar::from(EPSILON) {
+        if l2 < NativeFloat::from(EPSILON) {
             (self.start - p).squared_length().sqrt()
         } else {
             let v1 = p - self.start;
             let v2 = self.end - self.start;
-            let mut dot = P::Scalar::from(0.0);
+            let mut dot = NativeFloat::from(0.0);
             for (i, _) in v1.into_iter().enumerate() {
-                dot = dot + v1.axis(i) * v2.axis(i);
+                dot += v1.axis(i) * v2.axis(i);
             }
             // v1 and v2 will by definition always have the same number of axes and produce a value for each Item
             // dot = v1.into_iter()
             //         .zip(v2.into_iter())
             //         .map(|(x1, x2)| x1 * x2)
-            //         .sum::<P::Scalar>();
-            let mut t = P::Scalar::from(0.0);
-            if dot / l2 < P::Scalar::from(1.0) {
+            //         .sum::<NativeFloat>();
+            let mut t = NativeFloat::from(0.0);
+            if dot / l2 < NativeFloat::from(1.0) {
                 t = dot / l2;
             }
-            if t < P::Scalar::from(0.0) {
-                t = P::Scalar::from(0.0);
+            if t < NativeFloat::from(0.0) {
+                t = NativeFloat::from(0.0);
             }
             let projection = self.start + (self.end - self.start) * t; // Projection falls on the segment
 
@@ -79,7 +79,7 @@ where
     }
 
     /// Sample the coordinate axis of the segment at t (expecting t between 0 and 1).
-    pub fn axis(&self, t: P::Scalar, axis: usize) -> P::Scalar {
+    pub fn axis(&self, t: NativeFloat, axis: usize) -> NativeFloat {
         self.start.axis(axis) + (self.end.axis(axis) - self.start.axis(axis)) * t
     }
 
@@ -89,9 +89,9 @@ where
         self.end - self.start
     }
 
-    pub(crate) fn root(&self, a: P::Scalar, b: P::Scalar) -> ArrayVec<[P::Scalar; 1]> {
+    pub(crate) fn root(&self, a: NativeFloat, b: NativeFloat) -> ArrayVec<[NativeFloat; 1]> {
         let mut r = ArrayVec::new();
-        if a.abs() < EPSILON.into() {
+        if a.abs() < EPSILON {
             return r;
         }
         r.push(-b / a);
@@ -99,8 +99,8 @@ where
     }
 
     /// Return the bounding box of the line as an array of (min, max) tuples for each dimension (its index)
-    pub fn bounding_box(&self) -> [(P::Scalar, P::Scalar); PDIM] {
-        let mut bounds = [(P::Scalar::default(), P::Scalar::default()); PDIM];
+    pub fn bounding_box(&self) -> [(NativeFloat, NativeFloat); PDIM] {
+        let mut bounds = [(NativeFloat::default(), NativeFloat::default()); PDIM];
 
         // find min/max for that particular axis
         // TODO shoul be rewritten once 'Iterator' is implemented on P to get rid of .axis() method
@@ -124,8 +124,8 @@ mod tests {
     /// yields equal distance to the start (p)/end (q) points (up to machine accuracy).
     #[test]
     fn line_segment_interpolation() {
-        let start = PointN::new([0f64, 1.77f64]);
-        let end = PointN::new([4.3f64, 3f64]);
+        let start = PointN::new([0.0, 1.77]);
+        let end = PointN::new([4.3, 3.0]);
         let line = LineSegment::<_, 2> {
             start,
             end,
@@ -140,16 +140,16 @@ mod tests {
     fn line_segment_distance_to_point() {
         // 3D cause why not
         let line = LineSegment::<_, 2> {
-            start: PointN::new([0f64, 1f64, 0f64]),
-            end: PointN::new([3f64, 1f64, 0f64]),
+            start: PointN::new([0.0, 1.0, 0.0]),
+            end: PointN::new([3.0, 1.0, 0.0]),
         };
         // dist to start should be 4; dist to end should be 5
-        let p1 = PointN::new([0f64, 5f64, 0f64]);
+        let p1 = PointN::new([0.0, 5.0, 0.0]);
         assert!(line.distance_to_point(p1) - 4.0.abs() < EPSILON);
         assert!(((p1 - line.start).squared_length().sqrt() - 4.0).abs() < EPSILON);
         assert!(((p1 - line.end).squared_length().sqrt() - 5.0).abs() < EPSILON);
         // dist to midpoint (t=0.5) should be 1
-        let p2 = PointN::new([1.5f64, 2f64, 0f64]);
+        let p2 = PointN::new([1.5, 2.0, 0.0]);
         assert!(((p2 - line.eval(0.5)).squared_length().sqrt() - 1.0).abs() < EPSILON);
     }
 }

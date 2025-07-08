@@ -53,7 +53,7 @@ where
     P: Point,
 {
     /// Knot vector
-    knots: [P::Scalar; K],
+    knots: [NativeFloat; K],
     /// Knot Vector Kind (Clamped or Unclamped)
     knot_kind: KnotVectorKind,
     /// Control points
@@ -73,7 +73,7 @@ where
     /// degree`) and the number of knots should be equal to `control_points.len() + degree + 1`.
     /// K = C + D + 1
     pub fn new(
-        knots: [P::Scalar; K],
+        knots: [NativeFloat; K],
         control_points: [P; C],
     ) -> Result<BSpline<P, { K }, { C }, { D }>, BSplineError> {
         if control_points.len() <= { D } {
@@ -89,10 +89,10 @@ where
         } else {
             let is_clamped_front = knots[0..=D]
                 .iter()
-                .all(|&knot| (knot - knots[0]).abs() < P::Scalar::epsilon());
+                .all(|&knot| (knot - knots[0]).abs() < NativeFloat::epsilon());
             let is_clamped_back = knots[knots.len() - D - 1..]
                 .iter()
-                .all(|&knot| (knot - knots[knots.len() - 1]).abs() < P::Scalar::epsilon());
+                .all(|&knot| (knot - knots[knots.len() - 1]).abs() < NativeFloat::epsilon());
 
             let knot_kind = match (is_clamped_front, is_clamped_back) {
                 (false, false) => KnotVectorKind::Unclamped,
@@ -112,7 +112,7 @@ where
     /// Compute a point on the curve at `t` using iterative de boor algorithm.
     /// The parameter **must** be in the inclusive range of values returned
     /// by `knot_domain()`. If `t` is out of bounds a KnotDomainViolation error is returned.
-    pub fn eval(&self, t: P::Scalar) -> Result<P, BSplineError>
+    pub fn eval(&self, t: NativeFloat) -> Result<P, BSplineError>
     where
         [(); D + 1]: Sized,
     {
@@ -134,7 +134,7 @@ where
     }
 
     /// Returns an iterator over the knots.
-    pub fn knots(&self) -> Iter<'_, P::Scalar> {
+    pub fn knots(&self) -> Iter<'_, NativeFloat> {
         self.knots.iter()
     }
 
@@ -143,7 +143,7 @@ where
     /// The knot domain is defined as the minimum and maximum knot values.
     /// For a clamped B-Spline the first and last knot has multiplicity D+1.
     /// For an unclamped B-Spline the first and last knot has multiplicity 1.
-    pub fn knot_domain(&self) -> (P::Scalar, P::Scalar) {
+    pub fn knot_domain(&self) -> (NativeFloat, NativeFloat) {
         match self.knot_kind {
             KnotVectorKind::Clamped => self.knot_domain_clamped(),
             KnotVectorKind::ClampedStart => self.knot_domain_clamped_start(),
@@ -152,29 +152,29 @@ where
         }
     }
 
-    fn knot_domain_clamped_start(&self) -> (P::Scalar, P::Scalar) {
+    fn knot_domain_clamped_start(&self) -> (NativeFloat, NativeFloat) {
         // Start from knots[D], end at knots[knots.len() - 1]
         (self.knots[D], self.knots[self.knots.len() - 1])
     }
 
-    fn knot_domain_clamped_end(&self) -> (P::Scalar, P::Scalar) {
+    fn knot_domain_clamped_end(&self) -> (NativeFloat, NativeFloat) {
         // Start from knots[0], end at knots[knots.len() - 1 - D] (C = K - D - 1)
         (self.knots[0], self.knots[self.knots.len() - 1 - D])
     }
 
     // Returns the knot domain for a clamped B-Spline
     // where the first and last knot has multiplicity D+1
-    fn knot_domain_clamped(&self) -> (P::Scalar, P::Scalar) {
+    fn knot_domain_clamped(&self) -> (NativeFloat, NativeFloat) {
         // The valid domain is from knots[D] to knots[C] (C = K - D - 1)
         (self.knots[D], self.knots[self.knots.len() - 1 - D])
     }
 
     // Returns the knot domain for an unclamped B-Spline
     // where the first and last knot has multiplicity 1
-    // fn knot_domain_unclamped(&self) -> (P::Scalar, P::Scalar) {
+    // fn knot_domain_unclamped(&self) -> (NativeFloat, NativeFloat) {
     //     (self.knots[0], self.knots[self.knots.len() - 1])
     // }
-    fn knot_domain_unclamped(&self) -> (P::Scalar, P::Scalar) {
+    fn knot_domain_unclamped(&self) -> (NativeFloat, NativeFloat) {
         // The valid domain is from knots[D] to knots[C] (C = K - D - 1)
         (self.knots[D], self.knots[C])
     }
@@ -184,18 +184,18 @@ where
     // /// 1. coarse search over the whole curve
     // /// 2. fine search around the minimum yielded by the coarse search
     // /// TODO FIXME INVESTIGATE
-    // pub fn distance_to_point(&self, point: P) -> P::Scalar
+    // pub fn distance_to_point(&self, point: P) -> NativeFloat
     // where
     //     [(); D + 1]:,
     // {
     //     let nsteps: usize = 64;
-    //     let mut tmin: P::Scalar = 0.5.into();
-    //     let mut dmin: P::Scalar = (point - self.control_points[0]).squared_length();
+    //     let mut tmin: NativeFloat = 0.5.into();
+    //     let mut dmin: NativeFloat = (point - self.control_points[0]).squared_length();
     //     let (kstart, kend) = self.knot_domain();
     //     // 1. coarse pass
     //     for i in 0..nsteps {
     //         // calculate next step value
-    //         let t: P::Scalar =
+    //         let t: NativeFloat =
     //             kstart + (kend - kstart) * (i as NativeFloat / (nsteps as NativeFloat));
     //         // calculate distance to candidate
     //         let candidate = match self.eval(t) {
@@ -203,7 +203,7 @@ where
     //             Err(_) => {
     //                 // In case of error, return zero
     //                 // this can never happen as we control the t values passed to eval()
-    //                 return P::Scalar::from(0.0);
+    //                 return NativeFloat::from(0.0);
     //             }
     //         };
     //         if (candidate - point).squared_length() < dmin {
@@ -214,7 +214,7 @@ where
     //     // 2. fine pass
     //     for i in 0..nsteps {
     //         // calculate next step value ( a 64th of a 64th from first step)
-    //         let t: P::Scalar =
+    //         let t: NativeFloat =
     //             kstart + (kend - kstart) * (i as NativeFloat / ((nsteps * nsteps) as NativeFloat));
     //         // calculate distance to candidate centered around tmin from before
     //         let candidate = match self.eval(tmin + t - t * (nsteps as NativeFloat / 2.0)) {
@@ -222,7 +222,7 @@ where
     //             Err(_) => {
     //                 // In case of error, return zero
     //                 // this can never happen as we control the t values passed to eval()
-    //                 return P::Scalar::from(0.0);
+    //                 return NativeFloat::from(0.0);
     //             }
     //         };
     //         if (candidate - point).squared_length() < dmin {
@@ -238,7 +238,7 @@ where
     /// from the previous one to compute this level and store the results in the
     /// array indices we no longer need to compute the current level (the left one
     /// used computing node j).
-    fn de_boor_iterative(&self, t: P::Scalar) -> Result<P, BSplineError>
+    fn de_boor_iterative(&self, t: NativeFloat) -> Result<P, BSplineError>
     where
         [(); D + 1]: Sized,
     {
@@ -281,11 +281,11 @@ where
                 // calculate alpha, avoid division by zero
                 let numerator = t - self.knots[j + k - D];
                 let denominator = self.knots[j + 1 + k - r] - self.knots[j + k - D];
-                let alpha: P::Scalar;
-                if numerator < P::Scalar::epsilon() {
+                let alpha: NativeFloat;
+                if numerator < NativeFloat::epsilon() {
                     // we are at the start of a knot span (interpolation d[j-1] -> d[j])
                     alpha = 0.0.into();
-                } else if denominator.abs() < P::Scalar::epsilon() {
+                } else if denominator.abs() < NativeFloat::epsilon() {
                     // we are at then end of a knot span (interpolation d[j-1] -> d[j])
                     // this will lead to d[j] simply being copied to d[j]
                     alpha = 1.0.into();
@@ -304,7 +304,7 @@ where
         Ok(d[D])
     }
 
-    fn knot_span_start_for_t(&self, t: P::Scalar) -> Option<usize> {
+    fn knot_span_start_for_t(&self, t: NativeFloat) -> Option<usize> {
         match self.knot_kind {
             KnotVectorKind::Unclamped => self.knot_span_start_for_t_unclamped(t),
             KnotVectorKind::ClampedStart => self.knot_span_start_for_t_clamped_start(t),
@@ -318,7 +318,7 @@ where
     ///     knots[i] <= t < knots[i+1]
     /// Because the knot vector is non-decreasing, this function uses binary search.
     /// If no element greater than the value passed is found, the function returns None.
-    fn knot_span_start_for_t_unclamped(&self, t: P::Scalar) -> Option<usize> {
+    fn knot_span_start_for_t_unclamped(&self, t: NativeFloat) -> Option<usize> {
         let mut first = 0usize;
         let mut step;
         let mut count = self.knots.len() as isize;
@@ -344,7 +344,7 @@ where
     ///     knots[i] <= t < knots[i+1] where i >= degree and i < knots.len() - degree - 1
     /// Because the knot vector is non-decreasing, this function uses binary search.
     /// If no element greater than the value passed is found, the function returns None.
-    fn knot_span_start_for_t_clamped(&self, t: P::Scalar) -> Option<usize> {
+    fn knot_span_start_for_t_clamped(&self, t: NativeFloat) -> Option<usize> {
         let n = self.control_points.len() - 1; // n = number of control points - 1
         let p = D; // degree
         if t == self.knots[n + 1] {
@@ -365,7 +365,7 @@ where
         None
     }
 
-    fn knot_span_start_for_t_clamped_start(&self, t: P::Scalar) -> Option<usize> {
+    fn knot_span_start_for_t_clamped_start(&self, t: NativeFloat) -> Option<usize> {
         let n = self.control_points.len() - 1; // n = number of control points - 1
         let p = D; // Degree of the spline
         let m = self.knots.len() - 1; // Last index of the knot vector
@@ -399,7 +399,7 @@ where
         None // t is not within any knot span
     }
 
-    fn knot_span_start_for_t_clamped_end(&self, t: P::Scalar) -> Option<usize> {
+    fn knot_span_start_for_t_clamped_end(&self, t: NativeFloat) -> Option<usize> {
         let n = self.control_points.len() - 1; // n = number of control points - 1
 
         // Special case when t equals knots[n + 1]
@@ -433,18 +433,18 @@ where
 
     /// Approximates the arc length of the curve by flattening it with straight line segments.
     /// This approximation is unfeasable if desired accuracy is greater than ~2 decimal places
-    pub fn arclen(&self, nsteps: usize) -> P::Scalar
+    pub fn arclen(&self, nsteps: usize) -> NativeFloat
     where
         [(); D + 1]: Sized,
     {
-        let stepsize = P::Scalar::from(1.0 / (nsteps as NativeFloat));
-        let mut arclen: P::Scalar = 0.0.into();
+        let stepsize = NativeFloat::from(1.0 / (nsteps as NativeFloat));
+        let mut arclen: NativeFloat = 0.0.into();
         // evaluate the curve, t needs to be inside the knot domain!
         // we need to map [0...1] to kmin..kmax
         let (kmin, kmax) = self.knot_domain();
         for t in 0..=nsteps {
             let t = kmin
-                + (P::Scalar::from(t as NativeFloat) / P::Scalar::from(nsteps as NativeFloat))
+                + (t as NativeFloat / NativeFloat::from(nsteps as NativeFloat))
                     * (kmax - kmin);
             let p1 = self.eval(t).unwrap_or_else(|_| {
                 // should never happen as we control the t values passed to eval()

@@ -158,15 +158,15 @@ where
         + From<NativeFloat>
         + Into<NativeFloat>,
 {
-    type Scalar = NativeFloat;
+    // type Scalar = NativeFloat;
     const DIM: usize = { N };
 
-    fn axis(&self, index: usize) -> Self::Scalar {
+    fn axis(&self, index: usize) -> NativeFloat {
         assert!(index <= N);
         self.0[index].into()
     }
 
-    fn squared_length(&self) -> Self::Scalar {
+    fn squared_length(&self) -> NativeFloat {
         let mut sqr_dist = 0.0;
         for i in 0..N {
             sqr_dist += (self.0[i] * self.0[i]).into();

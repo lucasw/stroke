@@ -16,7 +16,7 @@ use crate::spline::Spline;
 /// const generic parameters:
 /// N: Number of control points
 #[derive(Clone, Copy)]
-pub struct Bezier<P, const N: usize>
+pub struct Bezier<P, const N: usize, const N_MINUS_1: usize>
 where
     P: Point,
 {
@@ -24,16 +24,16 @@ where
     control_points: [P; N],
 }
 
-impl<P, const N: usize> Spline<P> for Bezier<P, { N }>
+impl<P, const N: usize, const N_MINUS_1: usize> Spline<P> for Bezier<P, { N }, N_MINUS_1>
 where
     P: Point,
 {
-    fn eval(&self, t: P::Scalar) -> P {
+    fn eval(&self, t: NativeFloat) -> P {
         self.eval(t)
     }
 }
 
-impl<P: Point, const N: usize> IntoIterator for Bezier<P, { N }> {
+impl<P: Point, const N: usize, const N_MINUS_1: usize> IntoIterator for Bezier<P, { N }, N_MINUS_1> {
     type Item = P;
     type IntoIter = core::array::IntoIter<Self::Item, N>;
 
@@ -42,7 +42,7 @@ impl<P: Point, const N: usize> IntoIterator for Bezier<P, { N }> {
     }
 }
 
-impl<'a, P: Point, const N: usize> IntoIterator for &'a mut Bezier<P, { N }> {
+impl<'a, P: Point, const N: usize, const N_MINUS_1: usize> IntoIterator for &'a mut Bezier<P, { N }, N_MINUS_1> {
     type Item = &'a mut P;
     type IntoIter = slice::IterMut<'a, P>;
 
@@ -51,7 +51,7 @@ impl<'a, P: Point, const N: usize> IntoIterator for &'a mut Bezier<P, { N }> {
     }
 }
 
-impl<P, const N: usize> Bezier<P, { N }>
+impl<P, const N: usize, const N_MINUS_1: usize> Bezier<P, { N }, N_MINUS_1>
 where
     P: Point,
 {
@@ -59,7 +59,7 @@ where
     /// Desired curve must have a valid number of control points and knots in relation to its degree or the constructor will return None.
     /// A B-Spline curve requires at least one more control point than the degree (`control_points.len() >
     /// degree`) and the number of knots should be equal to `control_points.len() + degree + 1`.
-    pub fn new(control_points: [P; N]) -> Bezier<P, { N }> {
+    pub fn new(control_points: [P; N]) -> Bezier<P, { N }, N_MINUS_1> {
         Bezier { control_points }
     }
 
@@ -69,7 +69,7 @@ where
 
     /// Evaluate a point on the curve at point 't' which should be in the interval [0,1]
     /// This is implemented using De Casteljau's algorithm (over a temporary array with const generic sizing)
-    pub fn eval(&self, t: P::Scalar) -> P {
+    pub fn eval(&self, t: NativeFloat) -> P {
         //let t = t.into();
         // start with a copy of the original control points array and succesively use it for evaluation
         let mut p: [P; N] = self.control_points;
@@ -86,14 +86,14 @@ where
     /// Uses two passes with the same amount of steps in t:
     /// 1. coarse search over the whole curve
     /// 2. fine search around the minimum yielded by the coarse search
-    pub fn distance_to_point(&self, point: P) -> P::Scalar {
+    pub fn distance_to_point(&self, point: P) -> NativeFloat {
         let nsteps: usize = 64;
-        let mut tmin: P::Scalar = 0.5.into();
-        let mut dmin: P::Scalar = (point - self.control_points[0]).squared_length();
+        let mut tmin: NativeFloat = 0.5.into();
+        let mut dmin: NativeFloat = (point - self.control_points[0]).squared_length();
         // 1. coarse pass
         for i in 0..nsteps {
             // calculate next step value
-            let t: P::Scalar =
+            let t: NativeFloat =
                 (i as NativeFloat * 1.0 as NativeFloat / (nsteps as NativeFloat)).into();
             // calculate distance to candidate
             let candidate = self.eval(t);
@@ -105,7 +105,7 @@ where
         // 2. fine pass
         for i in 0..nsteps {
             // calculate next step value ( a 64th of a 64th from first step)
-            let t: P::Scalar =
+            let t: NativeFloat =
                 (i as NativeFloat * 1.0 as NativeFloat / ((nsteps * nsteps) as NativeFloat)).into();
             // calculate distance to candidate centered around tmin from before
             let candidate: P = self.eval(tmin + t - t * (nsteps as NativeFloat / 2.0));
@@ -117,7 +117,7 @@ where
         dmin.sqrt()
     }
 
-    pub fn split(&self, t: P::Scalar) -> (Self, Self) {
+    pub fn split(&self, t: NativeFloat) -> (Self, Self) {
         // start with a copy of the original control points for now
         // TODO how to initialize const generic array without using unsafe?
         let mut left: [P; N] = self.control_points;
@@ -153,11 +153,11 @@ where
     /// original weights as n(wi+1 - wi). So for a 3rd degree curve, with four weights,
     /// the derivative has three new weights:
     ///     w0 = 3(w1-w0), w'1 = 3(w2-w1) and w'2 = 3(w3-w2).
-    pub fn derivative(&self) -> Bezier<P, { N - 1 }> {
-        let mut new_points: [P; N - 1] = [P::default(); N - 1];
+    pub fn derivative<const N_MINUS_2: usize>(&self) -> Bezier<P, N_MINUS_1, N_MINUS_2> {
+        let mut new_points: [P; N_MINUS_1] = [P::default(); N_MINUS_1];
         for (i, _) in self.control_points.iter().enumerate() {
             new_points[i] =
-                (self.control_points[i + 1] - self.control_points[i]) * ((N - 1) as NativeFloat);
+                (self.control_points[i + 1] - self.control_points[i]) * ((N_MINUS_1) as NativeFloat);
             if i == self.control_points.len() - 2 {
                 break;
             }
@@ -170,17 +170,17 @@ where
     // /// There are the same number of roots as the degree of the curve nroots = degree = N_points-1
     // fn real_roots(&self,
     //     axis: usize,
-    //     eps: Option<P::Scalar>,
+    //     eps: Option<NativeFloat>,
     //     max_iter: Option<usize>
-    // ) -> Result<ArrayVec<[P::Scalar; N-1]>, RootFindingError>
+    // ) -> Result<ArrayVec<[NativeFloat; N-1]>, RootFindingError>
     // {
     //     todo!();
     //     // Compute the axis-wise polynomial coefficients e.g. quadratic has N coefs a,b,c in at^2 + bt + c
     //     // to do this generically, we need to find the coefs of the bezier of degree n by binomial expansion
     //     // B_n(t) = sum_1_to_n ( binom(n,i) * s^(n-i) * t^i * p[i])
-    //     let mut res: ArrayVec<[P::Scalar; N-1]> = ArrayVec::new();
-    //     let mut npascal:    [P::Scalar; N] = [ P::Scalar::from(0.0); N];
-    //     let poly_coefs:     [P::Scalar; N] = [ P::Scalar::from(0.0); N];
+    //     let mut res: ArrayVec<[NativeFloat; N-1]> = ArrayVec::new();
+    //     let mut npascal:    [NativeFloat; N] = [ NativeFloat::from(0.0); N];
+    //     let poly_coefs:     [NativeFloat; N] = [ NativeFloat::from(0.0); N];
 
     //     // 1. calculate the n-th row of pascals triangle on a zero-based index (all values for i in the binom(n,i) part)
     //     //    1      N = 0 (wouldn't compile due to index out of bounds)
@@ -198,7 +198,7 @@ where
     //     let eps = eps.unwrap_or(1e-3.into());
     //     let max_iter = max_iter.unwrap_or(128);
 
-    //     let mut x = P::Scalar::from(0.0);
+    //     let mut x = NativeFloat::from(0.0);
 
     //     let mut iter = 0;
     //     loop {
@@ -238,11 +238,11 @@ where
     /// Approximates the arc length of the curve by flattening it with straight line segments.
     /// This works quite well, at ~32 segments it should already provide an error in the decimal places
     /// The accuracy gain falls off with more steps so this approximation is unfeasable if desired accuracy is greater than 1-2 decimal places
-    pub fn arclen(&self, nsteps: usize) -> P::Scalar {
-        let stepsize = P::Scalar::from(1.0 / (nsteps as NativeFloat));
-        let mut arclen: P::Scalar = 0.0.into();
+    pub fn arclen(&self, nsteps: usize) -> NativeFloat {
+        let stepsize = NativeFloat::from(1.0 / (nsteps as NativeFloat));
+        let mut arclen: NativeFloat = 0.0.into();
         for t in 1..nsteps {
-            let t = P::Scalar::from(t as NativeFloat * 1.0 / (nsteps as NativeFloat));
+            let t = NativeFloat::from(t as NativeFloat * 1.0 / (nsteps as NativeFloat));
             let p1 = self.eval(t);
             let p2 = self.eval(t + stepsize);
 

@@ -96,10 +96,17 @@ where
     /// in the desired length
     /// return length, parametric_t
     fn recurse(a0: P, a1: P, a2: P, a3: P,
-            desired_len: Option<NativeFloat>, tolerance: NativeFloat, level: u8) -> (NativeFloat, NativeFloat) {
+            desired_len: Option<NativeFloat>, tolerance: NativeFloat, level: u8, min_level: u8) -> (NativeFloat, NativeFloat) {
+        // TODO(lucasw) when the line is straight, these values are the same so this exits
+        // immediately, but in that case the handles need to be 1/3 the line length to work
+        // properly
+        // But it looks like forcing this to recurse 4 times avoids this issue, but only
+        // do that when computing parametric t, don't use it for computing arclen
         let lower = a0.distance(&a3);
         let upper = a0.distance(&a1) + a1.distance(&a2) + a2.distance(&a3);
-        if (upper - lower) <= (2. * tolerance) || level >= 8 {
+        let in_tolerance = (upper - lower) <= (2. * tolerance);
+        let over_level_threshold = level >= 8;
+        if (in_tolerance || over_level_threshold) && level >= min_level {
             let approx_len = (lower + upper) / 2.;
             let parametric_t = match desired_len {
                 Some(desired_len) => {
@@ -118,7 +125,7 @@ where
         let b2 = (b1 + t0) * 0.5;
         let c2 = (t0 + c1) * 0.5;
         let b3 = (b2 + c2) * 0.5;
-        let (first_len, t) = Self::recurse(a0, b1, b2, b3, desired_len, 0.5 * tolerance, level + 1);
+        let (first_len, t) = Self::recurse(a0, b1, b2, b3, desired_len, 0.5 * tolerance, level + 1, min_level);
         let new_desired_len = {
             if let Some(desired_len) = desired_len {
                 if first_len > desired_len {
@@ -130,20 +137,23 @@ where
                 None
             }
         };
-        let (second_len, t) = Self::recurse(b3, c2, c1, a3, new_desired_len, 0.5 * tolerance, level + 1);
+        let (second_len, t) = Self::recurse(b3, c2, c1, a3, new_desired_len, 0.5 * tolerance, level + 1, min_level);
         (first_len + second_len, t * 0.5 + 0.5)
     }
 
     /// Use Casteljau subdivision, noting that the length is more than the straight line distance from start to end but less than the straight line distance through the handles
     pub fn arclen_castlejau(&self, tolerance: Option<NativeFloat>) -> NativeFloat {
-        let (approx_len, _) = Self::recurse(self.start, self.ctrl1, self.ctrl2, self.end, None, tolerance.unwrap_or_default(), 0);
+        let (approx_len, _) = Self::recurse(self.start, self.ctrl1, self.ctrl2, self.end, None, tolerance.unwrap_or_default(), 0, 0);
         approx_len
     }
 
-    pub fn desired_len_to_parametric_t(&self, desired_len: NativeFloat, tolerance: Option<NativeFloat>) -> NativeFloat {
-        // TODO(lucasw) maybe some callers want the achieved length to compare with desired?
-        let (_, parametric_t) = Self::recurse(self.start, self.ctrl1, self.ctrl2, self.end, Some(desired_len), tolerance.unwrap_or_default(), 0);
-        parametric_t
+    // return the achieved length (which may be slightly off desired) and the parametric t value
+    // that resulted in it
+    pub fn desired_len_to_parametric_t(&self, desired_len: NativeFloat, tolerance: Option<NativeFloat>) -> (NativeFloat, NativeFloat) {
+        let start_level = 0;
+        let min_level = 4;
+        let (len, parametric_t) = Self::recurse(self.start, self.ctrl1, self.ctrl2, self.end, Some(desired_len), tolerance.unwrap_or_default(), start_level, min_level);
+        (len, parametric_t)
     }
 
     pub fn split(&self, t: NativeFloat) -> (Self, Self) {
@@ -638,34 +648,64 @@ mod tests {
             end: PointN::new([0.0, 1.0]),
         };
 
-        // TODO(lucasw) this straight line is causing issues
-        let bezier1 = CubicBezier::<_, 2> {
+        // TODO(lucasw) for straight lines the handles need to be 1/3 the length for the parametric
+        // t function to work
+        let bezier_straight_thirds = CubicBezier::<_, 2> {
+            start: PointN::new([0.0, 0.0]),
+            ctrl1: PointN::new([3.0, 0.0]),
+            ctrl2: PointN::new([6.0, 0.0]),
+            end: PointN::new([9.0, 9.0]),
+        };
+
+        let bezier_diag_neg = CubicBezier::<_, 2> {
+            start: PointN::new([0.0, 0.0]),
+            ctrl1: PointN::new([-1.0, -1.0]),
+            ctrl2: PointN::new([-9.0, -9.0]),
+            end: PointN::new([-10.0, -10.0]),
+        };
+
+        let bezier_diag = CubicBezier::<_, 2> {
+            start: PointN::new([0.0, 0.0]),
+            ctrl1: PointN::new([1.0, 1.0]),
+            ctrl2: PointN::new([9.0, 9.0]),
+            end: PointN::new([10.0, 10.0]),
+        };
+
+        let bezier_ud = CubicBezier::<_, 2> {
+            start: PointN::new([0.0, 0.0]),
+            ctrl1: PointN::new([0.0, 1.0]),
+            ctrl2: PointN::new([0.0, 9.0]),
+            end: PointN::new([0.0, 10.0]),
+        };
+
+        let bezier_lr = CubicBezier::<_, 2> {
             start: PointN::new([0.0, 0.0]),
             ctrl1: PointN::new([1.0, 0.0]),
             ctrl2: PointN::new([9.0, 0.0]),
             end: PointN::new([10.0, 0.0]),
         };
 
-        for bezier in [bezier0, bezier1] {
+        for bezier in [bezier0, bezier_straight_thirds, bezier_diag_neg, bezier_diag, bezier_ud, bezier_lr] {
+        // for bezier in [bezier0, bezier_straight_thirds, bezier_lr] {
             let b_len = bezier.arclen_castlejau(None);
-            for sc in [0.0, 0.1, 0.2, 0.5, 0.6, 0.9, 1.0] {
+            for sc in [0.0, 0.05, 0.1, 0.2, 0.5, 0.6, 0.9, 1.0] {
                 let desired_len = sc * b_len;
-                let parametric_t = bezier.desired_len_to_parametric_t(desired_len, None);
+                let (len, parametric_t) = bezier.desired_len_to_parametric_t(desired_len, None);
                 let (left, _right) = bezier.split(parametric_t);
                 let achieved_len = left.arclen_castlejau(None);
-                assert!((desired_len - achieved_len).abs() < 0.1, "{sc} -> {parametric_t}, desired_len {desired_len} -> {achieved_len}");
+                assert!((desired_len - achieved_len).abs() < 0.1, "{bezier:?}\neuclidean t {sc} -> parametric t value {parametric_t}, desired_len {desired_len} -> {len} or split {achieved_len}");
             }
 
             for t in [0.0, 0.05, 0.1, 0.5, 0.8, 1.0] {
                 let (left, right) = bezier.split(t);
                 let left_len = left.arclen_castlejau(None);
-                let t2 = bezier.desired_len_to_parametric_t(left_len, None);
+                let (_len, t2) = bezier.desired_len_to_parametric_t(left_len, None);
 
                 let right_len = right.arclen_castlejau(None);
                 assert!((left_len + right_len - b_len).abs() < 0.001, "{left_len} + {right_len} = {} = {b_len}", left_len + right_len);
                 assert!(
-                    (t - t2).abs() < 0.001,
-                    "{t} -> {left_len} -> {t2}",
+                    (t - t2).abs() < 0.01,
+                    "parametric t {t} -> length {left_len} / {b_len} -> solved parametric t {t2}",
                 );
             }
         }

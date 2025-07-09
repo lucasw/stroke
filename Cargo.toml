@@ -30,7 +30,7 @@ tinyvec = { version = "^1.8"} #{, features = ["rustc_1_55"] }
 
 # these are just for development (e.g. integration tests and examples)
 [dev-dependencies]
-plotters = "^0.3"
+plotters = "0.3.7"
 
 [[example]]
 name = "plotters_cubic_bezier"

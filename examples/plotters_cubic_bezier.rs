@@ -44,6 +44,7 @@ impl Curve {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // control points for the cubic bezier curve
     let cpoints = [(0.0, 1.77), (1.1, -1.0), (5.3, 1.4), (3.2, -4.0)];
+    // let cpoints = [(0.0, 0.0), (2.0, 4.0), (9.0, -1.0), (10.0, 2.0)];
 
     let curve = Curve::default(&cpoints);
     let dx = curve.xmax - curve.xmin;
@@ -66,6 +67,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         BitMapBackend::new("cubic_bezier_bounding_box.png", (1024, 1024)).into_drawing_area();
     root.fill(&WHITE)?;
 
+    // TODO(lucasw) trying to draw a point outside the area results in the axis getting clipped
+    // to be on the edge of the area, which results in really wrong plots- is that a setting?
     // setup the chart
     let mut chart = ChartBuilder::on(&root)
         .caption("Cubic Bezier Curve", ("sans-serif", 21).into_font())
@@ -73,8 +76,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .x_label_area_size(30)
         .y_label_area_size(30)
         .build_cartesian_2d(
-            (curve.xmin - 1.0)..(curve.xmin + dmax + 1.0),
-            (curve.ymin - 1.0)..(curve.ymin + dmax + 1.0),
+            (curve.xmin - 2.0)..(curve.xmin + dmax + 2.0),
+            (curve.ymin - 2.0)..(curve.ymin + dmax + 2.0),
         )?; // make graph a bit bigger than bounding box
 
     chart.configure_mesh().draw()?;
@@ -136,32 +139,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .legend(|(x, y)| PathElement::new(legend_pt(x, y), RED));
 
     {
-        let point_off_line = PointN::new([4.1, 0.5]);
+        let point_off_line = PointN::new([3.1, 2.5]);
         let (test_point, test_t, distance) = curve.bezier.closest_to_point(point_off_line);
-        let curvature = curve.bezier.curvature(test_t);
-        // let test_t = 0.6;
-        // let test_point = bezier.eval(test_t);
+        /*
+        let test_t = 0.32;
+        let test_point = curve.bezier.eval(test_t);
+        let distance = test_point.distance(&point_off_line);
+        */
+        println!("test point    {test_point:?}");
 
+        let curvature = curve.bezier.curvature(test_t);
         let tangent = curve.bezier.tangent(test_t);
+        println!("tangent       {tangent:?}");
+        let normal = PointN::new([-tangent.axis(1), tangent.axis(0)]);
+        println!("normal        {normal:?}");
 
         let tangent_point = test_point + tangent;
 
         let turn_center = {
-            let (rel_center_x, rel_center_y) = {
-                let normal_x = -tangent.axis(1);
-                let normal_y = tangent.axis(0);
-                if curvature.abs() > 0.1 {
+            let rel_center = {
+                let min_curvature = 0.5;
+                if curvature.abs() > min_curvature {
                     let radius = 1.0 / curvature;
-                    (normal_x * radius, normal_y * radius)
+                    normal * radius
                 } else {
-                    (normal_x * 10.0, normal_y * 10.0)
+                    normal * (1.0 / min_curvature)
                 }
             };
-            PointN::new([
-                test_point.axis(0) + rel_center_x,
-                test_point.axis(1) + rel_center_y,
-            ])
+            println!("rel center    {rel_center:?}");
+            test_point + rel_center
         };
+        println!("turn center   {turn_center:?}");
+
+        println!("tangent point {tangent_point:?}");
 
         chart.draw_series(PointSeries::of_element(
             [(point_off_line.axis(0), point_off_line.axis(1))],
@@ -195,30 +205,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     + Circle::new((0, 0), size, style)
                     + Text::new(
                         format!(
-                            "test point t = {test_t:.2}, curvature {curvature:.2}, radius {:.2}",
+                            "test point {:.2} {:.2} t = {test_t:.2}, curvature {curvature:.2}, radius {:.2}, tangent: {tangent:?}",
+                            test_point.axis(0),
+                            test_point.axis(1),
                             1.0 / curvature
                         ),
-                        (0, 15),
-                        ("sans-serif", 15).into_font(),
-                    )
-            },
-        ))?;
-        // .label("test point");
-        // .legend(|(x, y)| PathElement::new(legend_pt(x, y), BLUE));
-
-        chart.draw_series(PointSeries::of_element(
-            [(test_point.axis(0), test_point.axis(1))],
-            5,
-            &BLUE,
-            &|coord, size, style| {
-                EmptyElement::at(coord)
-                    + Circle::new((0, 0), size, style)
-                    + Text::new(
-                        format!(
-                            "test point t = {test_t:.2}, curvature {curvature:.2}, radius {:.2}",
-                            1.0 / curvature
-                        ),
-                        (0, 15),
+                        (-100, 15),
                         ("sans-serif", 15).into_font(),
                     )
             },
@@ -240,9 +232,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &|coord, size, style| {
                 EmptyElement::at(coord)
                     + Circle::new((0, 0), size, style)
-                    + Text::new("turn center", (0, 15), ("sans-serif", 15).into_font())
+                    + Text::new(
+                        // TODO(lucasw) as mentioned above there is a serious issue with plotters
+                        // drawing out-of-area lines and circles, they are moved to the boundaries
+                        // but only on the one axis that went outside the boundary
+                        format!(
+                            "turn center {:.2} {:.2}, normal: {:.2} {:.2}",
+                            turn_center.axis(0),
+                            turn_center.axis(1),
+                            normal.axis(0),
+                            normal.axis(1)
+                        ),
+                        (-200, 15),
+                        ("sans-serif", 15).into_font(),
+                    )
             },
         ))?;
+
+        for t in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9] {
+            let point = curve.bezier.eval(t);
+            chart.draw_series(PointSeries::of_element(
+                [(point.axis(0), point.axis(1))],
+                5,
+                &RED,
+                &|coord, size, style| EmptyElement::at(coord) + Circle::new((0, 0), size, style),
+            ))?;
+        }
     }
 
     chart

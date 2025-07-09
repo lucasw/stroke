@@ -266,14 +266,14 @@ where
         closest_point_on_curve: &mut P,
         tmin: &mut NativeFloat,
         dmin: &mut NativeFloat,
-        candidate: &P,
+        candidate_on_curve: &P,
         t: NativeFloat,
         point: &P,
     ) {
-        let distance = (*candidate - *point).squared_length();
-        if distance < *dmin {
+        let distance = (*candidate_on_curve - *point).squared_length();
+        if distance <= *dmin {
             *tmin = t;
-            *closest_point_on_curve = *candidate;
+            *closest_point_on_curve = *candidate_on_curve;
             *dmin = distance;
         }
     }
@@ -284,34 +284,39 @@ where
     /// 1. coarse search over the whole curve
     /// 2. fine search around the minimum yielded by the coarse search
     pub fn closest_to_point(&self, point: P) -> (P, NativeFloat, NativeFloat) {
-        let nsteps: usize = 64;
+        let nsteps: usize = 32;
         let mut tmin: NativeFloat = 0.5;
-        let mut dmin: NativeFloat = (point - self.start).squared_length();
+        let mut dmin: NativeFloat = 1e6; // 2.0 * (point - self.start).squared_length();
         let mut closest_point_on_curve = self.start;
 
         // 1. coarse pass
-        for i in 0..nsteps {
-            // calculate next step value
-            let t: NativeFloat =
-                i as NativeFloat * 1.0 as NativeFloat / (nsteps as NativeFloat);
-            // calculate distance to candidate
-            let candidate = self.eval(t);
-            Self::capture_closest(
-                &mut closest_point_on_curve,
-                &mut tmin,
-                &mut dmin,
-                &candidate,
-                t,
-                &point,
-            );
+        {
+            let step = 1.0 / nsteps as NativeFloat;
+            for i in 0..nsteps {
+                // calculate next step value
+                let t = i as NativeFloat * step;
+                // calculate distance to candidate
+                let candidate = self.eval(t);
+                Self::capture_closest(
+                    &mut closest_point_on_curve,
+                    &mut tmin,
+                    &mut dmin,
+                    &candidate,
+                    t,
+                    &point,
+                );
+            }
         }
+
         // 2. fine pass
+        let fine_step = 1.0 / (nsteps * nsteps) as NativeFloat;
+        let half_range = nsteps as NativeFloat * fine_step / 2.0;
+        let tmin_coarse = tmin;
         for i in 0..nsteps {
             // calculate next step value ( a 64th of a 64th from first step)
-            let t: NativeFloat =
-                i as NativeFloat * 1.0 as NativeFloat / ((nsteps * nsteps) as NativeFloat);
+            let t = tmin_coarse + i as NativeFloat * fine_step - half_range;
             // calculate distance to candidate centered around tmin from before
-            let candidate: P = self.eval(tmin + t - t * (nsteps as NativeFloat / 2.0));
+            let candidate: P = self.eval(t);
             Self::capture_closest(
                 &mut closest_point_on_curve,
                 &mut tmin,
@@ -519,8 +524,10 @@ where
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
     use super::PointN;
     use super::*;
+    use std::println;
     use core::f64::consts::PI;
     #[test]
     fn circle_approximation_error() {
@@ -782,6 +789,26 @@ mod tests {
             for (idx, axis) in p.into_iter().enumerate() {
                 assert!((axis >= (bounds[idx].0 - max_err)) && (axis <= (bounds[idx].1 + max_err)))
             }
+        }
+    }
+
+    #[test]
+    fn closest_to_point() {
+        let bezier = CubicBezier::<_, 2> {
+            start: PointN::new([0.0, 0.0]),
+            ctrl1: PointN::new([1.0, 0.0]),
+            ctrl2: PointN::new([9.0, 0.0]),
+            end: PointN::new([10.0, 0.0]),
+        };
+
+        for desired_len in [0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0] {
+            let (found_len, parametric_t) = bezier.desired_len_to_parametric_t(desired_len, None);
+            let expected_distance = 2.0;
+            let point_off_line = PointN::new([desired_len, expected_distance]);
+            let (closest_point_on_line, t, distance) = bezier.closest_to_point(point_off_line);
+            println!("{desired_len} {parametric_t} -> {closest_point_on_line:?} {t} {distance}");
+            assert!((t - parametric_t).abs() < 0.01, "t {t}, expected {parametric_t}");
+            assert!((distance - expected_distance).abs() < 0.001, "distance {distance}, expected {expected_distance}");
         }
     }
 

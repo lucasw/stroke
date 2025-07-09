@@ -43,8 +43,10 @@ impl Curve {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // control points for the cubic bezier curve
-    let cpoints = [(0.0, 1.77), (1.1, -1.0), (5.3, 1.4), (3.2, -4.0)];
+    // let cpoints = [(0.0, 1.77), (1.1, -1.0), (5.3, 1.4), (3.2, -4.0)];
     // let cpoints = [(0.0, 0.0), (2.0, 4.0), (9.0, -1.0), (10.0, 2.0)];
+    let cpoints = [(0.0, 0.0), (2.0, 0.0), (8.0, 0.0), (10.0, 0.0)];
+    // let cpoints = [(0.0, 0.0), (4.0, 2.0), (0.0, 8.0), (0.0, 10.0)];
 
     let curve = Curve::default(&cpoints);
     let dx = curve.xmax - curve.xmin;
@@ -140,13 +142,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     {
         let point_off_line = PointN::new([3.1, 2.5]);
+        // let point_off_line = PointN::new([2.5, 3.1]);
         let (test_point, test_t, distance) = curve.bezier.closest_to_point(point_off_line);
         /*
         let test_t = 0.32;
         let test_point = curve.bezier.eval(test_t);
         let distance = test_point.distance(&point_off_line);
         */
-        println!("test point    {test_point:?}");
+        println!("test point    {test_point:?}, t {test_t:.2}");
 
         let curvature = curve.bezier.curvature(test_t);
         let tangent = curve.bezier.tangent(test_t);

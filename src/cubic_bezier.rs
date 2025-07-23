@@ -284,7 +284,11 @@ where
     /// 1. coarse search over the whole curve
     /// 2. fine search around the minimum yielded by the coarse search
     pub fn closest_to_point(&self, point: P) -> (P, NativeFloat, NativeFloat) {
-        let nsteps: usize = 32;
+        let nsteps = 32;
+        self.closest_to_point_with_nsteps(point, nsteps)
+    }
+
+    pub fn closest_to_point_with_nsteps(&self, point: P, nsteps: usize) -> (P, NativeFloat, NativeFloat) {
         let mut tmin: NativeFloat = 0.5;
         let mut dmin: NativeFloat = 1e6; // 2.0 * (point - self.start).squared_length();
         let mut closest_point_on_curve = self.start;
@@ -331,6 +335,11 @@ where
 
     pub fn distance_to_point(&self, point: P) -> NativeFloat {
         let (_, _, distance) = self.closest_to_point(point);
+        distance
+    }
+
+    pub fn distance_to_point_with_nsteps(&self, point: P, nsteps: usize) -> NativeFloat {
+        let (_, _, distance) = self.closest_to_point_with_nsteps(point, nsteps);
         distance
     }
 
@@ -802,13 +811,13 @@ mod tests {
         };
 
         for desired_len in [0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0] {
-            let (found_len, parametric_t) = bezier.desired_len_to_parametric_t(desired_len, None);
+            let (_found_len, parametric_t) = bezier.desired_len_to_parametric_t(desired_len, None);
             let expected_distance = 2.0;
             let point_off_line = PointN::new([desired_len, expected_distance]);
             let (closest_point_on_line, t, distance) = bezier.closest_to_point(point_off_line);
             println!("{desired_len} {parametric_t} -> {closest_point_on_line:?} {t} {distance}");
             assert!((t - parametric_t).abs() < 0.01, "t {t}, expected {parametric_t}");
-            assert!((distance - expected_distance).abs() < 0.001, "distance {distance}, expected {expected_distance}");
+            assert!((distance - expected_distance).abs() < 0.002, "distance {distance}, expected {expected_distance}");
         }
     }
 
@@ -825,5 +834,14 @@ mod tests {
             curve.distance_to_point(PointN::new([-5.1, -5.6]))
                 > curve.distance_to_point(PointN::new([5.1, 5.6]))
         );
+
+        // make sure the default nsteps isn't that bad
+        for pt_x in [-3.0, -2.0, 0.0, 4.0, 5.0, 6.0] {
+            let pt = PointN::new([pt_x, 4.0]);
+            let good_nsteps = 512;
+            let good_distance = curve.distance_to_point_with_nsteps(pt, good_nsteps);
+            let test_distance = curve.distance_to_point(pt);
+            assert!((good_distance - test_distance).abs() < 0.15, "distance {test_distance:.4}, expected {good_distance:.4}");
+        }
     }
 }

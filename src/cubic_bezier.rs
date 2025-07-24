@@ -284,16 +284,35 @@ where
     /// 1. coarse search over the whole curve
     /// 2. fine search around the minimum yielded by the coarse search
     pub fn closest_to_point(&self, point: P) -> (P, NativeFloat, NativeFloat) {
+        // this gets to a good enough closeness to the true value,
+        // though maybe some curves produce worse results, and of course
+        // the caller may want better results or to not do so many
+        // iterations
         let nsteps = 32;
         self.closest_to_point_with_nsteps(point, nsteps)
     }
 
+    // TODO(lucasw) just use argmin to search the line?
+    // TODO(lucasw) want a version of this that takes a starting position and only searches
+    // forward a little- maybe make the fine pass a separate function and just call that
+    /// brute force search along curve to find closest point- the less curvature there is
+    /// the fewer steps needed- TODO(lucasw) ideally could figure that out, or analyze the curve
+    /// ahead of time.
+    /// Could keep a cache in the curve so eval(t) can return immediately if this is called
+    /// repeatedly for the same curve (or fix nsteps ahead of time so it's certain new t values
+    /// won't be generated here.
+    /// Also probably could use a much coarser first pass and then use the two lowest sequential
+    /// distances to determine a straight line segment, find the closest point on that segment then
+    /// evaluate the real eval(t) of that t value and then refine a few more times around the found
+    /// value.
+    /// return the closest point on the line, the t-value (make that s-value), and the distance
     pub fn closest_to_point_with_nsteps(&self, point: P, nsteps: usize) -> (P, NativeFloat, NativeFloat) {
         let mut tmin: NativeFloat = 0.5;
-        let mut dmin: NativeFloat = 1e6; // 2.0 * (point - self.start).squared_length();
+        let mut dmin_squared: NativeFloat = 1e6; // 2.0 * (point - self.start).squared_length();
         let mut closest_point_on_curve = self.start;
 
         // 1. coarse pass
+        // the coarse pass and fine pass combined
         {
             let step = 1.0 / nsteps as NativeFloat;
             for i in 0..nsteps {
@@ -304,15 +323,24 @@ where
                 Self::capture_closest(
                     &mut closest_point_on_curve,
                     &mut tmin,
-                    &mut dmin,
+                    &mut dmin_squared,
                     &candidate,
                     t,
                     &point,
                 );
             }
         }
+        self.closest_to_point_with_nsteps_fine_pass(point, nsteps, closest_point_on_curve, tmin, dmin_squared)
+    }
 
-        // 2. fine pass
+    /// brute force search over subset of curve with set starting conditions, search forward and
+    /// backward of the initial t-value
+    pub fn closest_to_point_with_nsteps_fine_pass(&self, point: P, nsteps: usize, closest_point0: P, tmin0: NativeFloat, dmin_squared0: NativeFloat) -> (P, NativeFloat, NativeFloat) {
+        let mut tmin = tmin0;
+        let mut dmin_squared = dmin_squared0;
+        let mut closest_point_on_curve = closest_point0;
+
+        // TODO(lucasw) pass in the range and compute the fine_step from it
         let fine_step = 1.0 / (nsteps * nsteps) as NativeFloat;
         let half_range = nsteps as NativeFloat * fine_step / 2.0;
         let tmin_coarse = tmin;
@@ -324,13 +352,13 @@ where
             Self::capture_closest(
                 &mut closest_point_on_curve,
                 &mut tmin,
-                &mut dmin,
+                &mut dmin_squared,
                 &candidate,
                 t,
                 &point,
             );
         }
-        (closest_point_on_curve, tmin, sqrt(dmin))
+        (closest_point_on_curve, tmin, sqrt(dmin_squared))
     }
 
     pub fn distance_to_point(&self, point: P) -> NativeFloat {
@@ -802,7 +830,7 @@ mod tests {
     }
 
     #[test]
-    fn closest_to_point() {
+    fn closest_to_point_on_straight_line() {
         let bezier = CubicBezier::<_, 2> {
             start: PointN::new([0.0, 0.0]),
             ctrl1: PointN::new([1.0, 0.0]),

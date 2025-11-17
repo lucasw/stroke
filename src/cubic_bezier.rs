@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use super::point::Point;
 use super::LineSegment;
 use super::QuadraticBezier;
@@ -9,7 +10,7 @@ use super::*;
 /// : ```∀ t ∈ [0..1],  P(t) = (1 - t)³ * start + 3 * (1 - t)² * t * ctrl1 + 3 * t² * (1 - t) * ctrl2 + t³ * end```
 // TODO(lucasw) the vim syntax highlighting doesn't like the triple slashes followed by triple
 // back-tick above, but putting the ':' on the same line avoids it
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub struct CubicBezier<P, const PDIM: usize> {
     pub(crate) start: P,
     pub(crate) ctrl1: P,

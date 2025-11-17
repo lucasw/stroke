@@ -26,8 +26,8 @@ exclude = [
 
 [dependencies]
 libm = "0.2.8"
-serde = { version = "1.0.228", default-features = false, features = ["derive"] }
-tinyvec = { version = "^1.8"} #{, features = ["rustc_1_55"] }
+# serde = { version = "1.0.228", default-features = false, features = ["derive"] }
+tinyvec = { version = "^1.8"} # , features = ["serde"] }
 
 # these are just for development (e.g. integration tests and examples)
 [dev-dependencies]

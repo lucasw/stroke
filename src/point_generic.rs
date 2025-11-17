@@ -1,3 +1,4 @@
+// use serde::{Deserialize, Serialize};
 use core::iter::IntoIterator;
 use core::slice;
 
@@ -11,7 +12,8 @@ use super::*;
 /// This type only interacts with the library through
 /// the point trait, so you are free to use your own
 /// Point/Coord/Vec structures instead by implementing the (small) trait
-#[derive(Debug, Copy, Clone)]
+/// TODO(lucasw) the trait `Serialize` is not implemented for `[f64; N]`
+#[derive(Debug, Copy, Clone)] // , Deserialize, Serialize)]
 pub struct PointN<const N: usize>([NativeFloat; N]);
 
 impl<const N: usize> PointN<N> {

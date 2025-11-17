@@ -12,10 +12,10 @@ use super::*;
 // back-tick above, but putting the ':' on the same line avoids it
 #[derive(Copy, Clone, Debug, PartialEq)] // , Deserialize, Serialize)]
 pub struct CubicBezier<P, const PDIM: usize> {
-    pub(crate) start: P,
-    pub(crate) ctrl1: P,
-    pub(crate) ctrl2: P,
-    pub(crate) end: P,
+    pub start: P,
+    pub ctrl1: P,
+    pub ctrl2: P,
+    pub end: P,
 }
 
 // TODO(lucasw) can I avoid the redundant sizes?
